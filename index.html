@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Garden — Stained Grass Window · Groucho Barks</title>
+<style>
+  :root {
+    --soil-a: #1a1410;
+    --soil-b: #0d0906;
+    --ink: #f4ead8;
+    --accent: #f5a97f;
+    --dim: #8a7966;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; height: 100%; background: var(--soil-b); color: var(--ink); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; overflow: hidden; }
+  #stage { position: fixed; inset: 0; display: grid; grid-template-rows: 1fr auto; }
+  #garden { width: 100%; height: 100%; display: block; background: radial-gradient(ellipse at 50% 120%, #2a1f18 0%, var(--soil-a) 40%, var(--soil-b) 100%); cursor: crosshair; }
+  #hud { position: absolute; top: 16px; left: 16px; font-size: 13px; line-height: 1.4; max-width: 340px; pointer-events: none; }
+  #hud h1 { font-size: 15px; font-weight: 500; margin: 0 0 2px; color: var(--ink); letter-spacing: 0.02em; }
+  #hud .artist { color: var(--dim); font-size: 12px; }
+  #hud .hint { color: var(--dim); margin-top: 10px; font-size: 12px; }
+  #counter { position: absolute; top: 16px; right: 16px; font-size: 12px; color: var(--dim); text-align: right; font-variant-numeric: tabular-nums; }
+  #counter strong { color: var(--ink); font-weight: 500; }
+  #player-wrap { background: #000; padding: 8px 12px; border-top: 1px solid #2a211a; display: flex; align-items: center; gap: 12px; }
+  #player { flex: 1; min-width: 0; }
+  #progress { position: absolute; bottom: 96px; left: 16px; right: 16px; height: 2px; background: rgba(255,255,255,0.06); pointer-events: none; }
+  #progress-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--accent), #e8c78f); transition: width 0.2s linear; }
+  #progress-marker { position: absolute; top: -3px; left: 30%; width: 1px; height: 8px; background: var(--dim); opacity: 0.5; }
+  #progress-marker::after { content: "preview ends"; position: absolute; left: 4px; top: -16px; font-size: 10px; color: var(--dim); white-space: nowrap; }
+  #login-prompt { position: absolute; bottom: 110px; left: 50%; transform: translateX(-50%); padding: 12px 20px; background: rgba(20,14,10,0.95); border: 1px solid var(--accent); border-radius: 24px; font-size: 13px; color: var(--ink); opacity: 0; transition: opacity 0.4s; pointer-events: none; }
+  #login-prompt.show { opacity: 1; }
+  #login-prompt a { color: var(--accent); text-decoration: none; font-weight: 500; }
+  #login-prompt a:hover { text-decoration: underline; }
+  .flower-stem { fill: none; stroke: #4a6b3a; stroke-width: 1.2; stroke-linecap: round; }
+  .flower-leaf { fill: #5c7a42; opacity: 0.8; }
+  .flower-petal { opacity: 0.85; }
+  .flower-center { fill: #f4d35e; }
+  .seed { fill: #3a2a1c; }
+</style>
+</head>
+<body>
+  <div id="stage">
+    <svg id="garden" xmlns="http://www.w3.org/2000/svg"></svg>
+    <div id="player-wrap">
+      <div id="player"></div>
+    </div>
+  </div>
+
+  <div id="hud">
+    <h1>Stained Grass Window</h1>
+    <div class="artist">Groucho Barks</div>
+    <div class="hint">Click the soil to plant. Every seed blooms by song's end.</div>
+  </div>
+
+  <div id="counter"><strong id="planted">0</strong> planted · <span id="clock">0:00</span></div>
+
+  <div id="progress"><div id="progress-fill"></div><div id="progress-marker"></div></div>
+
+  <div id="login-prompt">
+    <span>Log in to Spotify to finish the garden — <a href="https://accounts.spotify.com/login" target="_blank">sign in</a>, then refresh.</span>
+  </div>
+
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script src="https://open.spotify.com/embed/iframe-api/v1" async></script>
+  <script>
+    const TRACK_URI = "spotify:track:5FjmryC7WxCnaeutu1XpRg";
+    const PREVIEW_LIMIT_MS = 30000;
+
+    const svg = d3.select("#garden");
+    const flowersLayer = svg.append("g").attr("class", "flowers");
+    const planted = []; // { x, y, plantedAtMs, hue, id }
+    let duration = 1;  // ms — set from Spotify controller
+    let position = 0;  // ms
+    let isPlaying = false;
+    let previewWarned = false;
+
+    let W = 0, H = 0;
+    function resize() {
+      const r = document.getElementById("garden").getBoundingClientRect();
+      W = r.width; H = r.height;
+      svg.attr("viewBox", `0 0 ${W} ${H}`);
+    }
+    resize();
+    window.addEventListener("resize", resize);
+
+    // Hue picked from x position — left = cool, right = warm
+    function hueFor(x) { return Math.floor((x / Math.max(W, 1)) * 320) + 20; }
+
+    function plantAt(x, y) {
+      if (y > H - 20) y = H - 20;
+      if (y < H * 0.35) y = H * 0.35 + (H * 0.4 * Math.random());
+      planted.push({
+        x, y,
+        plantedAtMs: position,
+        hue: hueFor(x),
+        id: "f" + planted.length,
+      });
+      document.getElementById("planted").textContent = planted.length;
+      render();
+    }
+
+    svg.on("click", (ev) => {
+      const [x, y] = d3.pointer(ev);
+      plantAt(x, y);
+    });
+
+    // Growth curve: 0 at plant time, 1 at song end. Shaped with easeCubicOut for early reward.
+    function growthFor(flower) {
+      const remaining = Math.max(duration - flower.plantedAtMs, 1);
+      const t = Math.min((position - flower.plantedAtMs) / remaining, 1);
+      return d3.easeCubicOut(Math.max(0, t));
+    }
+
+    function render() {
+      const sel = flowersLayer.selectAll("g.flower").data(planted, d => d.id);
+      const enter = sel.enter().append("g").attr("class", "flower").attr("transform", d => `translate(${d.x},${d.y})`);
+      // Seed dot (always present briefly)
+      enter.append("circle").attr("class", "seed").attr("r", 2.2);
+
+      // Update: draw stem, leaves, bloom based on growthFor
+      flowersLayer.selectAll("g.flower").each(function(d) {
+        const g = d3.select(this);
+        const t = growthFor(d);
+
+        // stem
+        let stem = g.select("path.flower-stem");
+        if (stem.empty()) stem = g.append("path").attr("class", "flower-stem");
+        const stemHeight = 60 * t;
+        stem.attr("d", `M0,0 Q ${Math.sin(d.plantedAtMs) * 4},${-stemHeight/2} 0,${-stemHeight}`);
+
+        // leaves — appear around t=0.25
+        if (t > 0.25) {
+          let leafL = g.select("path.leaf-l");
+          if (leafL.empty()) leafL = g.append("path").attr("class", "flower-leaf leaf-l");
+          const leafT = Math.min((t - 0.25) / 0.3, 1);
+          leafL.attr("d", `M0,${-stemHeight*0.4} Q ${-12*leafT},${-stemHeight*0.35} ${-16*leafT},${-stemHeight*0.45} Q ${-10*leafT},${-stemHeight*0.48} 0,${-stemHeight*0.42} Z`);
+
+          let leafR = g.select("path.leaf-r");
+          if (leafR.empty()) leafR = g.append("path").attr("class", "flower-leaf leaf-r");
+          leafR.attr("d", `M0,${-stemHeight*0.55} Q ${12*leafT},${-stemHeight*0.5} ${16*leafT},${-stemHeight*0.6} Q ${10*leafT},${-stemHeight*0.63} 0,${-stemHeight*0.57} Z`);
+        }
+
+        // bloom — appears from t=0.5 onward
+        if (t > 0.5) {
+          let bloom = g.select("g.bloom");
+          if (bloom.empty()) {
+            bloom = g.append("g").attr("class", "bloom");
+            for (let i = 0; i < 6; i++) {
+              bloom.append("ellipse")
+                .attr("class", "flower-petal")
+                .attr("rx", 0).attr("ry", 0)
+                .attr("transform", `rotate(${i * 60})`);
+            }
+            bloom.append("circle").attr("class", "flower-center").attr("r", 0);
+          }
+          bloom.attr("transform", `translate(0,${-stemHeight})`);
+          const bloomT = Math.min((t - 0.5) / 0.5, 1);
+          const size = 12 * bloomT;
+          bloom.selectAll("ellipse.flower-petal")
+            .attr("rx", size * 0.5)
+            .attr("ry", size)
+            .attr("cy", -size * 0.6)
+            .attr("fill", `hsl(${d.hue}, 70%, 65%)`);
+          bloom.select("circle.flower-center").attr("r", 3 * bloomT);
+        }
+
+        // hide seed once growing
+        g.select("circle.seed").attr("opacity", t > 0.05 ? 0 : 1);
+      });
+    }
+
+    function fmtTime(ms) {
+      const s = Math.floor(ms / 1000);
+      return `${Math.floor(s/60)}:${String(s%60).padStart(2,"0")}`;
+    }
+
+    function updateChrome() {
+      const pct = Math.min(position / Math.max(duration, 1), 1) * 100;
+      document.getElementById("progress-fill").style.width = pct + "%";
+      document.getElementById("clock").textContent = fmtTime(position);
+
+      // Preview boundary: if we've hit 29s+ and duration looks like full track, nudge login
+      if (!previewWarned && position >= PREVIEW_LIMIT_MS - 1500 && duration <= PREVIEW_LIMIT_MS + 500) {
+        document.getElementById("login-prompt").classList.add("show");
+        previewWarned = true;
+      }
+
+      // Position progress marker if full track (show where preview would have ended)
+      if (duration > PREVIEW_LIMIT_MS + 2000) {
+        const markerPct = (PREVIEW_LIMIT_MS / duration) * 100;
+        document.getElementById("progress-marker").style.left = markerPct + "%";
+      } else {
+        document.getElementById("progress-marker").style.display = "none";
+      }
+    }
+
+    window.onSpotifyIframeApiReady = (IFrameAPI) => {
+      const el = document.getElementById("player");
+      IFrameAPI.createController(el, {
+        uri: TRACK_URI,
+        width: "100%",
+        height: 80,
+      }, (ctrl) => {
+        ctrl.addListener("playback_update", (e) => {
+          position = e.data.position || 0;
+          duration = e.data.duration || 1;
+          isPlaying = !e.data.isPaused;
+          updateChrome();
+          render();
+        });
+        ctrl.addListener("ready", () => {
+          // idle — user presses play in the embed
+        });
+      });
+    };
+
+    // tick render even when Spotify events are quiet — keeps animation smooth
+    d3.timer(() => {
+      if (isPlaying) {
+        // interpolate position between Spotify events (~1/sec)
+        // Spotify's event cadence is coarse; we nudge locally for smooth growth
+      }
+      render();
+    });
+  </script>
+</body>
+</html>
