@@ -44,6 +44,7 @@
   #camera-setup { position: fixed; inset: 0; z-index: 20; background: #050505; opacity: 0; pointer-events: none; transition: opacity 0.18s ease; }
   #camera-setup.active { opacity: 1; pointer-events: auto; }
   #setup-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); opacity: 0.95; }
+  #setup-gloves { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0.62; pointer-events: none; }
   #setup-hands { position: absolute; inset: 0; width: 100%; height: 100%; }
   #setup-panel { position: absolute; left: 18px; right: 18px; bottom: 18px; display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; color: var(--ink); pointer-events: none; }
   #setup-panel .copy { max-width: 440px; padding: 12px 14px; background: rgba(0,0,0,0.46); border: 1px solid rgba(244,234,216,0.14); border-radius: 8px; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
@@ -78,6 +79,9 @@
   .hand-outline.visible, #setup-hands.visible { opacity: 0.42; }
   .hand-outline.holding, #setup-hands.holding { opacity: 0.2; }
   #setup-hands { opacity: 0; pointer-events: none; mix-blend-mode: screen; transition: opacity 0.16s linear; filter: blur(0.25px); }
+  .glove-outline { fill: rgba(210,214,218,0.08); stroke: rgba(245,248,250,0.52); stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 10 9; }
+  .glove-palm { fill: rgba(210,214,218,0.05); stroke: rgba(245,248,250,0.26); stroke-width: 1.4; stroke-dasharray: 5 7; }
+  .glove-label { fill: rgba(245,248,250,0.58); font-size: 12px; letter-spacing: 0.06em; text-anchor: middle; }
   .hand-silhouette { fill: rgba(210,214,218,0.13); stroke: rgba(235,238,242,0.2); stroke-width: 4; stroke-linejoin: round; }
   .hand-palm { fill: rgba(210,214,218,0.09); stroke: rgba(235,238,242,0.24); stroke-width: 1.4; }
   .hand-bone { fill: none; stroke: rgba(235,238,242,0.38); stroke-width: 5.2; stroke-linecap: round; stroke-linejoin: round; }
@@ -124,11 +128,12 @@
 
   <div id="camera-setup" aria-hidden="true">
     <video id="setup-video" autoplay muted playsinline></video>
+    <svg id="setup-gloves" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"></svg>
     <svg id="setup-hands" xmlns="http://www.w3.org/2000/svg"></svg>
     <div id="setup-panel">
       <div class="copy">
-        <h2>Camera setup</h2>
-        <p>Fit both hands inside the frame. The grey hand layer should sit directly over your hands before you enter the garden.</p>
+        <h2>Fit your hands inside the gloves</h2>
+        <p>Put each hand inside a dashed glove. The ghost layer should sit over your hands before you enter the garden.</p>
       </div>
       <button id="setup-done" type="button">enter garden</button>
     </div>
@@ -627,6 +632,7 @@
       const setup = document.getElementById("camera-setup");
       const setupVideo = document.getElementById("setup-video");
       const setupDone = document.getElementById("setup-done");
+      const setupGlovesLayer = d3.select("#setup-gloves");
       const setupHandsLayer = d3.select("#setup-hands");
       const cursor = document.getElementById("pinch-cursor");
       let landmarker = null;
@@ -655,7 +661,58 @@
         const rect = setupHandsLayer.node().getBoundingClientRect();
         setupW = rect.width;
         setupH = rect.height;
+        setupGlovesLayer.attr("viewBox", `0 0 ${setupW} ${setupH}`);
         setupHandsLayer.attr("viewBox", `0 0 ${setupW} ${setupH}`);
+        drawSetupGloves();
+      }
+
+      function glovePath(cx, cy, scale, flip = 1) {
+        const pts = [
+          [-46, 8], [-56, -28], [-42, -68], [-26, -106], [-10, -132],
+          [2, -112], [-2, -74], [4, -38], [12, -136], [28, -154],
+          [38, -120], [34, -40], [48, -132], [64, -140], [70, -104],
+          [58, -32], [82, -94], [98, -88], [96, -50], [70, -4],
+          [56, 30], [22, 48], [-18, 44],
+        ];
+        return "M" + pts
+          .map(([x, y]) => `${cx + x * scale * flip},${cy + y * scale}`)
+          .join(" L") + " Z";
+      }
+
+      function palmOval(cx, cy, scale, flip = 1) {
+        return `M${cx - 38 * scale * flip},${cy + 4 * scale}
+          C${cx - 44 * scale * flip},${cy - 34 * scale} ${cx - 14 * scale * flip},${cy - 70 * scale} ${cx + 24 * scale * flip},${cy - 66 * scale}
+          C${cx + 64 * scale * flip},${cy - 62 * scale} ${cx + 80 * scale * flip},${cy - 14 * scale} ${cx + 48 * scale * flip},${cy + 24 * scale}
+          C${cx + 24 * scale * flip},${cy + 52 * scale} ${cx - 22 * scale * flip},${cy + 46 * scale} ${cx - 38 * scale * flip},${cy + 4 * scale} Z`;
+      }
+
+      function drawSetupGloves() {
+        if (!setupW || !setupH) return;
+        const scale = Math.max(0.72, Math.min(setupW, setupH) / 520);
+        const y = setupH * 0.58;
+        const gap = Math.min(setupW * 0.22, 220);
+        const gloves = [
+          { id: "left", cx: setupW * 0.5 - gap, cy: y, flip: -1, label: "LEFT" },
+          { id: "right", cx: setupW * 0.5 + gap, cy: y, flip: 1, label: "RIGHT" },
+        ];
+
+        setupGlovesLayer.selectAll("path.glove-outline")
+          .data(gloves, d => d.id)
+          .join("path")
+          .attr("class", "glove-outline")
+          .attr("d", d => glovePath(d.cx, d.cy, scale, d.flip));
+        setupGlovesLayer.selectAll("path.glove-palm")
+          .data(gloves, d => d.id)
+          .join("path")
+          .attr("class", "glove-palm")
+          .attr("d", d => palmOval(d.cx, d.cy, scale, d.flip));
+        setupGlovesLayer.selectAll("text.glove-label")
+          .data(gloves, d => d.id)
+          .join("text")
+          .attr("class", "glove-label")
+          .attr("x", d => d.cx)
+          .attr("y", d => d.cy + 88 * scale)
+          .text(d => d.label);
       }
 
       function openSetup() {
