@@ -32,11 +32,57 @@
   #login-prompt.show { opacity: 1; }
   #login-prompt a { color: var(--accent); text-decoration: none; font-weight: 500; }
   #login-prompt a:hover { text-decoration: underline; }
+  #camera-ui { position: absolute; right: 16px; bottom: 112px; z-index: 4; width: min(360px, calc(100vw - 32px)); color: var(--ink); font-size: 11px; }
+  #camera-toggle { width: 100%; min-height: 34px; border: 1px solid rgba(245,169,127,0.35); border-radius: 8px; background: rgba(13,9,6,0.86); color: var(--accent); font: inherit; cursor: pointer; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+  #camera-toggle:disabled { cursor: wait; opacity: 0.7; }
+  #camera-panel { margin-top: 8px; border: 1px solid rgba(244,234,216,0.16); border-radius: 8px; overflow: hidden; background: rgba(0,0,0,0.72); }
+  #camera-panel[hidden] { display: none; }
+  #hand-video { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; transform: scaleX(-1); opacity: 0.82; }
+  #camera-status { padding: 7px 8px; color: var(--dim); line-height: 1.25; }
+  #camera-help { margin: 0; padding: 0 8px 8px 20px; color: rgba(244,234,216,0.72); line-height: 1.35; }
+  #camera-help li { margin: 3px 0; }
+  #camera-setup { position: fixed; inset: 0; z-index: 20; background: #050505; opacity: 0; pointer-events: none; transition: opacity 0.18s ease; }
+  #camera-setup.active { opacity: 1; pointer-events: auto; }
+  #setup-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; transform: scaleX(-1); opacity: 0.95; }
+  #setup-hands { position: absolute; inset: 0; width: 100%; height: 100%; }
+  #setup-panel { position: absolute; left: 18px; right: 18px; bottom: 18px; display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; color: var(--ink); pointer-events: none; }
+  #setup-panel .copy { max-width: 440px; padding: 12px 14px; background: rgba(0,0,0,0.46); border: 1px solid rgba(244,234,216,0.14); border-radius: 8px; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+  #setup-panel h2 { margin: 0 0 4px; font-size: 14px; font-weight: 500; }
+  #setup-panel p { margin: 0; color: rgba(244,234,216,0.7); font-size: 12px; line-height: 1.35; }
+  #setup-done { pointer-events: auto; min-width: 132px; min-height: 38px; border: 1px solid rgba(244,234,216,0.28); border-radius: 8px; background: rgba(244,234,216,0.12); color: var(--ink); font: inherit; cursor: pointer; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+  body.camera-setup-open #hud,
+  body.camera-setup-open #counter,
+  body.camera-setup-open #progress,
+  body.camera-setup-open #login-prompt,
+  body.camera-setup-open #camera-ui,
+  body.camera-setup-open #pinch-cursor { opacity: 0; pointer-events: none; }
+  #pinch-cursor { position: absolute; z-index: 3; left: 0; top: 0; width: 34px; height: 34px; margin: -17px 0 0 -17px; border: 1px solid rgba(245,169,127,0.8); border-radius: 50%; pointer-events: none; opacity: 0; transform: translate3d(-100px,-100px,0) scale(0.9); transition: opacity 0.12s linear, border-color 0.12s linear, background 0.12s linear; }
+  #pinch-cursor::after { content: ""; position: absolute; inset: 11px; border-radius: 50%; background: rgba(245,169,127,0.7); }
+  #pinch-cursor.pinching { background: rgba(245,169,127,0.2); border-color: rgba(232,199,143,0.95); transform: translate3d(var(--x), var(--y), 0) scale(0.72); }
   .flower-stem { fill: none; stroke: #4a6b3a; stroke-width: 1.2; stroke-linecap: round; }
   .flower-leaf { fill: #5c7a42; opacity: 0.8; }
   .flower-petal { opacity: 0.85; }
   .flower-center { fill: #f4d35e; }
   .seed { fill: #3a2a1c; }
+  .house-body { stroke: rgba(244,234,216,0.68); stroke-width: 1; }
+  .house-roof { stroke: rgba(13,9,6,0.42); stroke-width: 1; }
+  .house-window { fill: rgba(255,248,202,0.86); }
+  .water-drop { fill: none; stroke: #8fc7e8; stroke-width: 1.4; stroke-linecap: round; opacity: 0.85; }
+  .watering-can { opacity: 0; pointer-events: none; }
+  .can-body { fill: rgba(94,118,123,0.9); stroke: rgba(232,199,143,0.85); stroke-width: 1; }
+  .can-line { fill: none; stroke: rgba(232,199,143,0.85); stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; }
+  .sun-ray { fill: none; stroke: rgba(255,218,120,0.72); stroke-width: 1.4; stroke-linecap: round; opacity: 0.7; }
+  .sun-glow { fill: rgba(255,207,93,0.1); stroke: rgba(255,224,137,0.42); stroke-width: 1; }
+  .cloud-puff { fill: rgba(244,234,216,0.09); stroke: rgba(244,234,216,0.16); stroke-width: 1; }
+  .hand-outline { opacity: 0; pointer-events: none; mix-blend-mode: screen; transition: opacity 0.16s linear; filter: blur(0.2px); }
+  .hand-outline.visible, #setup-hands.visible { opacity: 0.42; }
+  .hand-outline.holding, #setup-hands.holding { opacity: 0.2; }
+  #setup-hands { opacity: 0; pointer-events: none; mix-blend-mode: screen; transition: opacity 0.16s linear; filter: blur(0.25px); }
+  .hand-silhouette { fill: rgba(210,214,218,0.13); stroke: rgba(235,238,242,0.2); stroke-width: 4; stroke-linejoin: round; }
+  .hand-palm { fill: rgba(210,214,218,0.09); stroke: rgba(235,238,242,0.24); stroke-width: 1.4; }
+  .hand-bone { fill: none; stroke: rgba(235,238,242,0.38); stroke-width: 5.2; stroke-linecap: round; stroke-linejoin: round; }
+  .hand-bone.detail { stroke: rgba(250,252,253,0.22); stroke-width: 1.4; }
+  .hand-point { fill: rgba(245,248,250,0.2); }
 </style>
 </head>
 <body>
@@ -50,7 +96,7 @@
   <div id="hud">
     <h1>Stained Grass Window</h1>
     <div class="artist">Groucho Barks</div>
-    <div class="hint">Click the soil to plant. Every seed blooms by song's end.</div>
+    <div class="hint">Click the soil, or use camera gestures: tap plants, pinch waters, snap grows houses.</div>
   </div>
 
   <div id="counter"><strong id="planted">0</strong> planted · <span id="clock">0:00</span></div>
@@ -59,6 +105,33 @@
 
   <div id="login-prompt">
     <span>Log in to Spotify to finish the garden — <a href="https://accounts.spotify.com/login" target="_blank">sign in</a>, then refresh.</span>
+  </div>
+
+  <div id="camera-ui">
+    <button id="camera-toggle" type="button">camera garden</button>
+    <div id="camera-panel" hidden>
+      <video id="hand-video" autoplay muted playsinline></video>
+      <div id="camera-status">Two-hand tap plants. Pinch waters. Snap grows technicolor houses.</div>
+      <ul id="camera-help">
+        <li>Tap one hand with your other index finger to plant.</li>
+        <li>Pinch over a flower to pour water.</li>
+        <li>Snap to grow technicolor houses.</li>
+        <li>Wave an open hand side to side for sunshine.</li>
+      </ul>
+    </div>
+  </div>
+  <div id="pinch-cursor" aria-hidden="true"></div>
+
+  <div id="camera-setup" aria-hidden="true">
+    <video id="setup-video" autoplay muted playsinline></video>
+    <svg id="setup-hands" xmlns="http://www.w3.org/2000/svg"></svg>
+    <div id="setup-panel">
+      <div class="copy">
+        <h2>Camera setup</h2>
+        <p>Fit both hands inside the frame. The grey hand layer should sit directly over your hands before you enter the garden.</p>
+      </div>
+      <button id="setup-done" type="button">enter garden</button>
+    </div>
   </div>
 
   <script src="https://d3js.org/d3.v7.min.js"></script>
@@ -98,8 +171,14 @@
     const PREVIEW_LIMIT_MS = 30000;
 
     const svg = d3.select("#garden");
+    const handLayer = svg.append("g").attr("class", "hand-outline");
+    const sunshineLayer = svg.append("g").attr("class", "sunshine");
+    const housesLayer = svg.append("g").attr("class", "houses");
     const flowersLayer = svg.append("g").attr("class", "flowers");
-    const planted = []; // { x, y, plantedAtMs, hue, id }
+    const waterLayer = svg.append("g").attr("class", "water");
+    const canLayer = svg.append("g").attr("class", "watering-can");
+    const planted = []; // { x, y, plantedAtMs, hue, id, water, wateredAt, sun, sunnedAt, growth }
+    const houses = []; // { x, y, hue, id, createdAt }
     let duration = 1;  // ms — set from Spotify controller
     let position = 0;  // ms
     let isPlaying = false;
@@ -117,18 +196,250 @@
     // Hue picked from x position — left = cool, right = warm
     function hueFor(x) { return Math.floor((x / Math.max(W, 1)) * 320) + 20; }
 
-    function plantAt(x, y) {
-      Haptic.soft();
-      if (y > H - 20) y = H - 20;
-      if (y < H * 0.35) y = H * 0.35 + (H * 0.4 * Math.random());
-      planted.push({
-        x, y,
+    function clampGardenPoint(x, y) {
+      x = Math.max(10, Math.min(W - 10, x));
+      y = Math.max(H * 0.35, Math.min(H - 20, y));
+      return { x, y };
+    }
+
+    function plantAt(x, y, opts = {}) {
+      if (!opts.quiet) Haptic.soft();
+      const p = clampGardenPoint(x, y);
+      const flower = {
+        x: p.x,
+        y: p.y,
         plantedAtMs: position,
-        hue: hueFor(x),
+        hue: hueFor(p.x),
         id: "f" + planted.length,
-      });
+        water: opts.water ?? 0.28,
+        wateredAt: 0,
+        sun: opts.sun ?? 0.12,
+        sunnedAt: 0,
+        growth: opts.growth ?? 0.1,
+      };
+      planted.push(flower);
       document.getElementById("planted").textContent = planted.length;
       render();
+      return flower;
+    }
+
+    function plantBurstAt(x, y, count = 7) {
+      const spread = Math.max(22, Math.min(W, H) * 0.055);
+      const flowers = [];
+      for (let i = 0; i < count; i++) {
+        const angle = (i / count) * Math.PI * 2 + Math.random() * 0.7;
+        const dist = Math.random() * spread;
+        flowers.push(plantAt(
+          x + Math.cos(angle) * dist,
+          y + Math.sin(angle) * dist * 0.55,
+          { quiet: true, growth: 0.14 + Math.random() * 0.08, water: 0.34 }
+        ));
+      }
+      Haptic.success();
+      return flowers;
+    }
+
+    function houseAt(x, y) {
+      const p = clampGardenPoint(x, y);
+      const house = {
+        x: p.x,
+        y: p.y,
+        hue: hueFor(p.x),
+        id: "h" + houses.length,
+        createdAt: performance.now(),
+      };
+      houses.push(house);
+      render();
+      Haptic.success();
+      return house;
+    }
+
+    function technicolorBonus(recentHouses) {
+      recentHouses.forEach((house) => {
+        plantBurstAt(house.x, house.y + 18, 18);
+        sunshineBurst();
+      });
+    }
+
+    function splashAt(x, y, hue) {
+      const drops = d3.range(8).map((i) => {
+        const angle = (-130 + i * 37) * Math.PI / 180;
+        const dist = 14 + Math.random() * 22;
+        return { id: `${Date.now()}-${i}-${Math.random()}`, x, y, dx: Math.cos(angle) * dist, dy: Math.sin(angle) * dist, hue };
+      });
+
+      waterLayer.selectAll("path.water-drop")
+        .data(drops, d => d.id)
+        .join(
+          enter => enter.append("path")
+            .attr("class", "water-drop")
+            .attr("d", d => `M${d.x},${d.y} l0,0`)
+            .attr("stroke", d => `hsl(${190 + (d.hue % 25)}, 70%, 72%)`)
+            .call(enter => enter.transition().duration(520).ease(d3.easeCubicOut)
+              .attr("d", d => `M${d.x},${d.y} q${d.dx * 0.3},${d.dy * 0.2} ${d.dx},${d.dy}`)
+              .attr("opacity", 0)
+              .remove()),
+          update => update,
+          exit => exit.remove()
+        );
+    }
+
+    function showWateringCan(x, y) {
+      canLayer.interrupt();
+      canLayer.selectAll("*").remove();
+      canLayer
+        .attr("transform", `translate(${x - 46},${y - 76}) rotate(-18)`)
+        .style("opacity", 1);
+
+      canLayer.append("path")
+        .attr("class", "can-body")
+        .attr("d", "M8,25 h34 q7,0 7,7 v18 q0,7 -7,7 H8 q-7,0 -7,-7 V32 q0,-7 7,-7 Z");
+      canLayer.append("path")
+        .attr("class", "can-line")
+        .attr("d", "M47,34 C66,28 74,32 82,42");
+      canLayer.append("path")
+        .attr("class", "can-line")
+        .attr("d", "M14,25 C16,8 40,8 42,25");
+      canLayer.append("path")
+        .attr("class", "can-line")
+        .attr("d", "M49,48 C62,50 71,56 80,65");
+
+      const streams = d3.range(6).map((i) => ({
+        id: `pour-${performance.now()}-${i}`,
+        x1: x + 24 + i * 4,
+        y1: y - 34 + i * 2,
+        x2: x - 10 + i * 5,
+        y2: y - 8 + Math.random() * 9,
+      }));
+      waterLayer.selectAll("line.water-pour")
+        .data(streams, d => d.id)
+        .enter()
+        .append("line")
+        .attr("class", "water-drop water-pour")
+        .attr("x1", d => d.x1)
+        .attr("y1", d => d.y1)
+        .attr("x2", d => d.x1)
+        .attr("y2", d => d.y1)
+        .transition()
+        .duration(420)
+        .ease(d3.easeCubicOut)
+        .attr("x2", d => d.x2)
+        .attr("y2", d => d.y2)
+        .attr("opacity", 0)
+        .remove();
+
+      canLayer.transition()
+        .duration(680)
+        .ease(d3.easeCubicOut)
+        .attr("transform", `translate(${x - 46},${y - 76}) rotate(-32)`)
+        .transition()
+        .duration(260)
+        .style("opacity", 0);
+    }
+
+    function waterAt(x, y) {
+      const p = clampGardenPoint(x, y);
+      const radius = Math.max(120, Math.min(W, H) * 0.16);
+      let closest = null;
+      let closestDist = Infinity;
+
+      for (const flower of planted) {
+        const dist = Math.hypot(flower.x - p.x, flower.y - p.y);
+        if (dist < closestDist) {
+          closest = flower;
+          closestDist = dist;
+        }
+      }
+
+      if (!closest || closestDist > radius) return false;
+
+      closest.water = Math.min(1, (closest.water || 0) + 0.32);
+      closest.wateredAt = performance.now();
+      closest.growth = Math.min(1, Math.max(closest.growth || 0, growthFor(closest)) + 0.22);
+      showWateringCan(closest.x, closest.y);
+      splashAt(closest.x, closest.y - 8, closest.hue);
+      Haptic.medium();
+      render();
+      return true;
+    }
+
+    function sunshineBurst() {
+      const now = performance.now();
+      planted.forEach((flower) => {
+        flower.sun = Math.min(1, (flower.sun || 0) + 0.18);
+        flower.sunnedAt = now;
+        flower.growth = Math.min(1, Math.max(flower.growth || 0, growthFor(flower)) + 0.08);
+      });
+
+      const cx = W * 0.5;
+      const cy = Math.max(70, H * 0.18);
+      const rays = d3.range(9).map((i) => {
+        const angle = (-150 + i * 18) * Math.PI / 180;
+        return {
+          id: `ray-${now}-${i}`,
+          x1: cx + Math.cos(angle) * 34,
+          y1: cy + Math.sin(angle) * 24,
+          x2: cx + Math.cos(angle) * (W * 0.22),
+          y2: cy + Math.sin(angle) * (H * 0.3),
+        };
+      });
+
+      const burst = sunshineLayer.append("g").attr("class", "sun-burst");
+      burst.append("circle")
+        .attr("class", "sun-glow")
+        .attr("cx", cx)
+        .attr("cy", cy)
+        .attr("r", 24)
+        .transition()
+        .duration(620)
+        .ease(d3.easeCubicOut)
+        .attr("r", Math.min(W, H) * 0.24)
+        .attr("opacity", 0)
+        .remove();
+
+      burst.selectAll("line.sun-ray")
+        .data(rays)
+        .enter()
+        .append("line")
+        .attr("class", "sun-ray")
+        .attr("x1", d => d.x1)
+        .attr("y1", d => d.y1)
+        .attr("x2", d => d.x1)
+        .attr("y2", d => d.y1)
+        .transition()
+        .duration(540)
+        .ease(d3.easeCubicOut)
+        .attr("x2", d => d.x2)
+        .attr("y2", d => d.y2)
+        .attr("opacity", 0)
+        .remove();
+
+      const clouds = [
+        { x: cx - 86, y: cy - 8, r: 20, dx: -38 },
+        { x: cx - 56, y: cy - 20, r: 26, dx: -46 },
+        { x: cx - 22, y: cy - 10, r: 22, dx: -32 },
+        { x: cx + 44, y: cy - 18, r: 25, dx: 38 },
+        { x: cx + 76, y: cy - 6, r: 19, dx: 48 },
+      ];
+      burst.selectAll("circle.cloud-puff")
+        .data(clouds)
+        .enter()
+        .append("circle")
+        .attr("class", "cloud-puff")
+        .attr("cx", d => d.x)
+        .attr("cy", d => d.y)
+        .attr("r", d => d.r)
+        .transition()
+        .duration(620)
+        .ease(d3.easeCubicOut)
+        .attr("cx", d => d.x + d.dx)
+        .attr("opacity", 0)
+        .remove();
+
+      burst.transition().delay(680).remove();
+      Haptic.success();
+      render();
+      return true;
     }
 
     svg.on("click", (ev) => {
@@ -149,10 +460,53 @@
     function growthFor(flower) {
       const remaining = Math.max(duration - flower.plantedAtMs, 1);
       const t = Math.min((position - flower.plantedAtMs) / remaining, 1);
-      return d3.easeCubicOut(Math.max(0, t));
+      const songGrowth = d3.easeCubicOut(Math.max(0, t));
+      const waterBoost = 0.45 + Math.min(flower.water || 0, 1) * 0.55;
+      const sunBoost = 0.88 + Math.min(flower.sun || 0, 1) * 0.18;
+      const recentBoost = performance.now() - (flower.wateredAt || 0) < 1300 ? 0.08 : 0;
+      const recentSun = performance.now() - (flower.sunnedAt || 0) < 1600 ? 0.06 : 0;
+      const interactiveGrowth = Math.min(1, (flower.growth || 0) + recentBoost + recentSun);
+      return Math.min(1, Math.max(songGrowth * waterBoost * sunBoost, interactiveGrowth));
     }
 
     function render() {
+      const houseSel = housesLayer.selectAll("g.house").data(houses, d => d.id);
+      const houseEnter = houseSel.enter()
+        .append("g")
+        .attr("class", "house")
+        .attr("transform", d => `translate(${d.x},${d.y}) scale(0.05)`);
+      houseEnter.append("rect")
+        .attr("class", "house-body")
+        .attr("x", -18)
+        .attr("y", -26)
+        .attr("width", 36)
+        .attr("height", 26)
+        .attr("rx", 2);
+      houseEnter.append("path")
+        .attr("class", "house-roof")
+        .attr("d", "M-23,-26 L0,-48 L23,-26 Z");
+      houseEnter.append("rect")
+        .attr("class", "house-window")
+        .attr("x", -9)
+        .attr("y", -20)
+        .attr("width", 7)
+        .attr("height", 7)
+        .attr("rx", 1);
+      houseEnter.append("rect")
+        .attr("class", "house-window")
+        .attr("x", 4)
+        .attr("y", -20)
+        .attr("width", 7)
+        .attr("height", 7)
+        .attr("rx", 1);
+      housesLayer.selectAll("g.house").each(function(d) {
+        const t = d3.easeBackOut(Math.min((performance.now() - d.createdAt) / 680, 1));
+        const g = d3.select(this);
+        g.attr("transform", `translate(${d.x},${d.y}) scale(${0.65 + t * 0.35})`);
+        g.select(".house-body").attr("fill", `hsl(${d.hue}, 78%, ${54 + Math.sin(d.hue) * 8}%)`);
+        g.select(".house-roof").attr("fill", `hsl(${(d.hue + 85) % 360}, 86%, 58%)`);
+      });
+
       const sel = flowersLayer.selectAll("g.flower").data(planted, d => d.id);
       const enter = sel.enter().append("g").attr("class", "flower").attr("transform", d => `translate(${d.x},${d.y})`);
       // Seed dot (always present briefly)
@@ -201,7 +555,7 @@
             .attr("rx", size * 0.5)
             .attr("ry", size)
             .attr("cy", -size * 0.6)
-            .attr("fill", `hsl(${d.hue}, 70%, 65%)`);
+            .attr("fill", `hsl(${d.hue}, ${62 + (d.water || 0) * 14 + (d.sun || 0) * 8}%, ${58 + (d.water || 0) * 8 + (d.sun || 0) * 10}%)`);
           bloom.select("circle.flower-center").attr("r", 3 * bloomT);
         }
 
@@ -263,6 +617,432 @@
       }
       render();
     });
+
+    // ─── Camera pinch watering ─────────────────────────────────────────────────
+    const CameraPinch = (() => {
+      const btn = document.getElementById("camera-toggle");
+      const panel = document.getElementById("camera-panel");
+      const status = document.getElementById("camera-status");
+      const video = document.getElementById("hand-video");
+      const setup = document.getElementById("camera-setup");
+      const setupVideo = document.getElementById("setup-video");
+      const setupDone = document.getElementById("setup-done");
+      const setupHandsLayer = d3.select("#setup-hands");
+      const cursor = document.getElementById("pinch-cursor");
+      let landmarker = null;
+      let stream = null;
+      let raf = 0;
+      let setupW = 0;
+      let setupH = 0;
+      let setupOpen = false;
+      let wasPinching = false;
+      let wasFist = false;
+      let lastWatered = 0;
+      let lastPlanted = 0;
+      let lastSunshine = 0;
+      let lastHands = [];
+      let snapPrimed = false;
+      let lastSnap = 0;
+      const snapTimes = [];
+      const waveHistory = [];
+
+      function setStatus(text) {
+        status.textContent = text;
+      }
+
+      function resizeSetup() {
+        const rect = setupHandsLayer.node().getBoundingClientRect();
+        setupW = rect.width;
+        setupH = rect.height;
+        setupHandsLayer.attr("viewBox", `0 0 ${setupW} ${setupH}`);
+      }
+
+      function openSetup() {
+        setupOpen = true;
+        setup.setAttribute("aria-hidden", "false");
+        setup.classList.add("active");
+        document.body.classList.add("camera-setup-open");
+        resizeSetup();
+      }
+
+      function closeSetup() {
+        setupOpen = false;
+        setup.setAttribute("aria-hidden", "true");
+        setup.classList.remove("active");
+        document.body.classList.remove("camera-setup-open");
+      }
+
+      function pointInBox(landmark, width, height) {
+        const rawX = (1 - landmark.x) * width;
+        const rawY = landmark.y * height;
+        return {
+          x: Math.max(0, Math.min(width, rawX)),
+          y: Math.max(0, Math.min(height, rawY)),
+        };
+      }
+
+      function handPoint(landmark) {
+        return pointInBox(landmark, W, H);
+      }
+
+      function setupPoint(landmark) {
+        const width = setupW || window.innerWidth;
+        const height = setupH || window.innerHeight;
+        const videoW = setupVideo.videoWidth || 4;
+        const videoH = setupVideo.videoHeight || 3;
+        const scale = Math.min(width / videoW, height / videoH);
+        const drawnW = videoW * scale;
+        const drawnH = videoH * scale;
+        const offsetX = (width - drawnW) / 2;
+        const offsetY = (height - drawnH) / 2;
+        const p = pointInBox(landmark, drawnW, drawnH);
+        return {
+          x: offsetX + p.x,
+          y: offsetY + p.y,
+        };
+      }
+
+      function palmCenter(hand) {
+        const palmIndexes = [0, 5, 9, 13, 17];
+        const sum = palmIndexes.reduce((acc, i) => {
+          const p = handPoint(hand[i]);
+          acc.x += p.x;
+          acc.y += p.y;
+          return acc;
+        }, { x: 0, y: 0 });
+        return {
+          x: sum.x / palmIndexes.length,
+          y: sum.y / palmIndexes.length,
+        };
+      }
+
+      function drawHandOutlines(hands, layer = handLayer, pointFn = handPoint) {
+        const allPoints = [];
+        const allBones = [];
+        const detailBones = [];
+        const palms = [];
+        const silhouettes = [];
+        const bones = [
+          [0, 1], [1, 2], [2, 3], [3, 4],
+          [0, 5], [5, 6], [6, 7], [7, 8],
+          [5, 9], [9, 10], [10, 11], [11, 12],
+          [9, 13], [13, 14], [14, 15], [15, 16],
+          [13, 17], [17, 18], [18, 19], [19, 20],
+          [0, 17],
+        ];
+
+        hands.forEach((hand, handIndex) => {
+          const points = hand.map(pointFn);
+          allPoints.push(...points.map((p, i) => ({ ...p, id: `${handIndex}-${i}` })));
+          const handBones = bones.map(([a, b], i) => ({
+            id: `${handIndex}-${i}`,
+            x1: points[a].x,
+            y1: points[a].y,
+            x2: points[b].x,
+            y2: points[b].y,
+          }));
+          allBones.push(...handBones);
+          detailBones.push(...handBones);
+          palms.push({
+            id: handIndex,
+            points: [0, 5, 9, 13, 17]
+              .map(i => `${points[i].x},${points[i].y}`)
+              .join(" "),
+          });
+          silhouettes.push({
+            id: handIndex,
+            points: [0, 1, 2, 3, 4, 3, 2, 5, 6, 7, 8, 7, 6, 9, 10, 11, 12, 11, 10, 13, 14, 15, 16, 15, 14, 17, 18, 19, 20, 19, 18, 17]
+              .map(i => `${points[i].x},${points[i].y}`)
+              .join(" "),
+          });
+        });
+
+        layer.classed("visible", true);
+        layer.classed("holding", false);
+        layer.selectAll("polygon.hand-silhouette")
+          .data(silhouettes, d => d.id)
+          .join("polygon")
+          .attr("class", "hand-silhouette")
+          .attr("points", d => d.points);
+        layer.selectAll("polygon.hand-palm")
+          .data(palms, d => d.id)
+          .join("polygon")
+          .attr("class", "hand-palm")
+          .attr("points", d => d.points);
+        layer.selectAll("line.hand-bone:not(.detail)")
+          .data(allBones, d => d.id)
+          .join("line")
+          .attr("class", "hand-bone")
+          .attr("x1", d => d.x1)
+          .attr("y1", d => d.y1)
+          .attr("x2", d => d.x2)
+          .attr("y2", d => d.y2);
+        layer.selectAll("line.hand-bone.detail")
+          .data(detailBones, d => d.id)
+          .join("line")
+          .attr("class", "hand-bone detail")
+          .attr("x1", d => d.x1)
+          .attr("y1", d => d.y1)
+          .attr("x2", d => d.x2)
+          .attr("y2", d => d.y2);
+        layer.selectAll("circle.hand-point")
+          .data(allPoints, d => d.id)
+          .join("circle")
+          .attr("class", "hand-point")
+          .attr("cx", d => d.x)
+          .attr("cy", d => d.y)
+          .attr("r", 2.6);
+      }
+
+      function hideHandOutline() {
+        if (lastHands.length) {
+          drawHandOutlines(lastHands);
+          handLayer.classed("holding", true);
+          if (setupOpen) {
+            drawHandOutlines(lastHands, setupHandsLayer, setupPoint);
+            setupHandsLayer.classed("holding", true);
+          }
+        } else {
+          handLayer.classed("visible", false);
+          setupHandsLayer.classed("visible", false);
+        }
+      }
+
+      function updateCursor(x, y, active) {
+        cursor.style.opacity = "1";
+        cursor.style.setProperty("--x", `${x}px`);
+        cursor.style.setProperty("--y", `${y}px`);
+        cursor.style.transform = `translate3d(${x}px, ${y}px, 0) scale(${active ? 0.72 : 0.9})`;
+        cursor.classList.toggle("pinching", active);
+      }
+
+      function fingerExtended(hand, tipIndex, pipIndex) {
+        return hand[tipIndex].y < hand[pipIndex].y - 0.015;
+      }
+
+      function landmarkDistance(hand, a, b) {
+        return Math.hypot(hand[a].x - hand[b].x, hand[a].y - hand[b].y);
+      }
+
+      function handPose(hand) {
+        const thumb = hand[4];
+        const index = hand[8];
+        const middleBase = hand[9];
+        const handScale = Math.max(0.001, Math.hypot(index.x - middleBase.x, index.y - middleBase.y));
+        const pinchDist = Math.hypot(index.x - thumb.x, index.y - thumb.y) / handScale;
+        const wristToKnuckles = [5, 9, 13, 17].reduce((sum, i) => sum + landmarkDistance(hand, 0, i), 0) / 4;
+        const wristToTips = [8, 12, 16, 20].reduce((sum, i) => sum + landmarkDistance(hand, 0, i), 0) / 4;
+        const extended = [
+          fingerExtended(hand, 8, 6),
+          fingerExtended(hand, 12, 10),
+          fingerExtended(hand, 16, 14),
+          fingerExtended(hand, 20, 18),
+        ];
+        const extendedCount = extended.filter(Boolean).length;
+        const compactHand = wristToTips < wristToKnuckles * 1.45;
+        const isFist = extendedCount <= 1 || (extendedCount <= 2 && compactHand);
+        const isPinching = !isFist && (wasPinching ? pinchDist < 0.68 : pinchDist < 0.48);
+        const isOpen = extendedCount >= 3 && pinchDist > 0.7;
+        return { isPinching, isFist, isOpen, extendedCount };
+      }
+
+      function twoHandPlantTap(hands) {
+        if (hands.length < 2 || performance.now() - lastPlanted < 420) return null;
+
+        for (let tapperIndex = 0; tapperIndex < hands.length; tapperIndex++) {
+          for (let targetIndex = 0; targetIndex < hands.length; targetIndex++) {
+            if (tapperIndex === targetIndex) continue;
+
+            const tapper = hands[tapperIndex];
+            const target = hands[targetIndex];
+            const tip = handPoint(tapper[8]);
+            const targetPalm = palmCenter(target);
+            const tapperPose = handPose(tapper);
+            const targetPoints = [0, 5, 9, 13, 17].map(i => handPoint(target[i]));
+            const tapDistance = Math.min(
+              Math.hypot(tip.x - targetPalm.x, tip.y - targetPalm.y),
+              ...targetPoints.map(p => Math.hypot(tip.x - p.x, tip.y - p.y))
+            );
+            const tapRadius = Math.max(92, Math.min(W, H) * 0.13);
+
+            if (tapDistance < tapRadius && tapperPose.extendedCount >= 1) {
+              return targetPalm;
+            }
+          }
+        }
+
+        return null;
+      }
+
+      function trackSnap(hand) {
+        const now = performance.now();
+        const thumb = hand[4];
+        const middle = hand[12];
+        const middleBase = hand[9];
+        const scale = Math.max(0.001, landmarkDistance(hand, 0, middleBase));
+        const snapDist = Math.hypot(thumb.x - middle.x, thumb.y - middle.y) / scale;
+
+        if (snapDist < 0.38) snapPrimed = true;
+        if (!snapPrimed || snapDist <= 0.68 || now - lastSnap < 450) return null;
+
+        snapPrimed = false;
+        lastSnap = now;
+        const p = handPoint(middle);
+        const house = houseAt(p.x, p.y);
+        snapTimes.push({ t: now, house });
+        while (snapTimes.length && now - snapTimes[0].t > 10000) snapTimes.shift();
+        if (snapTimes.length >= 3) {
+          const recentHouses = snapTimes.slice(-3).map(item => item.house);
+          snapTimes.length = 0;
+          technicolorBonus(recentHouses);
+          return "bonus";
+        }
+        return "house";
+      }
+
+      function trackWave(hand, isOpen) {
+        const now = performance.now();
+        waveHistory.push({ x: hand[0].x, t: now });
+        while (waveHistory.length && now - waveHistory[0].t > 950) waveHistory.shift();
+        if (!isOpen || now - lastSunshine < 1800 || waveHistory.length < 8) return false;
+
+        const xs = waveHistory.map(p => p.x);
+        const travel = Math.max(...xs) - Math.min(...xs);
+        let directionChanges = 0;
+        let lastDir = 0;
+        for (let i = 1; i < waveHistory.length; i++) {
+          const delta = waveHistory[i].x - waveHistory[i - 1].x;
+          if (Math.abs(delta) < 0.012) continue;
+          const dir = Math.sign(delta);
+          if (lastDir && dir !== lastDir) directionChanges++;
+          lastDir = dir;
+        }
+
+        if (travel > 0.18 && directionChanges >= 2) {
+          waveHistory.length = 0;
+          lastSunshine = now;
+          sunshineBurst();
+          return true;
+        }
+        return false;
+      }
+
+      async function loadHandLandmarker() {
+        const vision = await import("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.18/vision_bundle.mjs");
+        const fileset = await vision.FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.18/wasm");
+        return vision.HandLandmarker.createFromOptions(fileset, {
+          baseOptions: {
+            modelAssetPath: "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
+            delegate: "GPU",
+          },
+          runningMode: "VIDEO",
+          numHands: 2,
+        });
+      }
+
+      function loop() {
+        if (!landmarker || video.readyState < 2) {
+          raf = requestAnimationFrame(loop);
+          return;
+        }
+
+        const result = landmarker.detectForVideo(video, performance.now());
+        const hands = result.landmarks || [];
+        const hand = hands[0];
+
+        if (hand) {
+          lastHands = hands;
+          drawHandOutlines(hands);
+          if (setupOpen) drawHandOutlines(hands, setupHandsLayer, setupPoint);
+          const index = hand[8];
+          const palm = palmCenter(hand);
+          const pose = handPose(hand);
+          const indexPoint = handPoint(index);
+          const x = indexPoint.x;
+          const y = indexPoint.y;
+          const waved = trackWave(hand, pose.isOpen);
+          const plantTap = twoHandPlantTap(hands);
+          const snap = trackSnap(hand);
+
+          updateCursor(x, y, pose.isPinching || pose.isFist);
+          if (snap) {
+            setStatus(snap === "bonus" ? "Three snaps: flower explosion." : "Snap grew a technicolor house.");
+          } else if (plantTap) {
+            plantBurstAt(plantTap.x, plantTap.y, 9);
+            lastPlanted = performance.now();
+            setStatus("Two-hand tap planted seeds.");
+          } else if (pose.isFist && !wasFist && performance.now() - lastPlanted > 1400) {
+            plantBurstAt(palm.x, palm.y, 5);
+            lastPlanted = performance.now();
+            setStatus("Fist planted seeds.");
+          } else if (pose.isPinching && (!wasPinching || performance.now() - lastWatered > 650)) {
+            const watered = waterAt(x, y);
+            lastWatered = performance.now();
+            setStatus(watered ? "Watering with the can." : "Pinch over a flower to water.");
+          } else if (waved) {
+            setStatus("Sunshine burst through the clouds.");
+          } else if (pose.isOpen) {
+            setStatus("Wave side to side for sunshine.");
+          } else {
+            setStatus("Tap plants. Pinch waters. Snap grows houses.");
+          }
+          wasPinching = pose.isPinching;
+          wasFist = pose.isFist;
+        } else {
+          cursor.style.opacity = "0";
+          hideHandOutline();
+          wasPinching = false;
+          wasFist = false;
+          snapPrimed = false;
+          waveHistory.length = 0;
+          setStatus("Show one hand to the camera.");
+        }
+
+        raf = requestAnimationFrame(loop);
+      }
+
+      async function start() {
+        if (!navigator.mediaDevices?.getUserMedia) {
+          setStatus("Camera needs a modern browser on localhost or HTTPS.");
+          panel.hidden = false;
+          return;
+        }
+
+        btn.disabled = true;
+        btn.textContent = "loading camera";
+        panel.hidden = false;
+        setStatus("Loading hand tracking.");
+
+        try {
+          landmarker = landmarker || await loadHandLandmarker();
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } },
+            audio: false,
+          });
+          video.srcObject = stream;
+          setupVideo.srcObject = stream;
+          await video.play();
+          await setupVideo.play();
+          btn.textContent = "camera on";
+          setStatus("Tap plants. Pinch waters. Snap grows houses.");
+          openSetup();
+          raf = requestAnimationFrame(loop);
+        } catch (err) {
+          console.error(err);
+          btn.disabled = false;
+          btn.textContent = "camera garden";
+          setStatus("Camera permission or hand tracking failed.");
+        }
+      }
+
+      btn.addEventListener("click", start);
+      setupDone.addEventListener("click", closeSetup);
+      window.addEventListener("resize", resizeSetup);
+      window.addEventListener("pagehide", () => {
+        cancelAnimationFrame(raf);
+        stream?.getTracks().forEach(track => track.stop());
+      });
+    })();
 
     // ─── Tilt parallax ─────────────────────────────────────────────────────────
     Motion.onTilt((gamma, beta) => {
