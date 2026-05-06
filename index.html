@@ -43,8 +43,9 @@
   #camera-help li { margin: 3px 0; }
   #camera-setup { position: fixed; inset: 0; z-index: 20; background: #050505; opacity: 0; pointer-events: none; transition: opacity 0.18s ease; }
   #camera-setup.active { opacity: 1; pointer-events: auto; }
+  #camera-setup.locked { opacity: 0; pointer-events: none; transition: opacity 0.9s ease; }
   #setup-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); opacity: 0.95; }
-  #setup-gloves { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0.62; pointer-events: none; }
+  #setup-gloves { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0.72; pointer-events: none; }
   #setup-hands { position: absolute; inset: 0; width: 100%; height: 100%; }
   #setup-panel { position: absolute; left: 18px; right: 18px; bottom: 18px; display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; color: var(--ink); pointer-events: none; }
   #setup-panel .copy { max-width: 440px; padding: 12px 14px; background: rgba(0,0,0,0.46); border: 1px solid rgba(244,234,216,0.14); border-radius: 8px; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
@@ -57,6 +58,8 @@
   body.camera-setup-open #login-prompt,
   body.camera-setup-open #camera-ui,
   body.camera-setup-open #pinch-cursor { opacity: 0; pointer-events: none; }
+  body.camera-setup-open #garden { opacity: 0.18; transition: opacity 0.9s ease; }
+  body.camera-tracking-on #garden { opacity: 1; }
   #pinch-cursor { position: absolute; z-index: 3; left: 0; top: 0; width: 34px; height: 34px; margin: -17px 0 0 -17px; border: 1px solid rgba(245,169,127,0.8); border-radius: 50%; pointer-events: none; opacity: 0; transform: translate3d(-100px,-100px,0) scale(0.9); transition: opacity 0.12s linear, border-color 0.12s linear, background 0.12s linear; }
   #pinch-cursor::after { content: ""; position: absolute; inset: 11px; border-radius: 50%; background: rgba(245,169,127,0.7); }
   #pinch-cursor.pinching { background: rgba(245,169,127,0.2); border-color: rgba(232,199,143,0.95); transform: translate3d(var(--x), var(--y), 0) scale(0.72); }
@@ -79,8 +82,9 @@
   .hand-outline.visible, #setup-hands.visible { opacity: 0.42; }
   .hand-outline.holding, #setup-hands.holding { opacity: 0.2; }
   #setup-hands { opacity: 0; pointer-events: none; mix-blend-mode: screen; transition: opacity 0.16s linear; filter: blur(0.25px); }
-  .glove-outline { fill: rgba(210,214,218,0.08); stroke: rgba(245,248,250,0.52); stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 10 9; }
-  .glove-palm { fill: rgba(210,214,218,0.05); stroke: rgba(245,248,250,0.26); stroke-width: 1.4; stroke-dasharray: 5 7; }
+  .glove-outline { fill: rgba(210,214,218,0.08); stroke: rgba(245,248,250,0.54); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 12 9; }
+  .glove-outline.ready { fill: rgba(210,214,218,0.14); stroke: rgba(220,255,214,0.76); stroke-dasharray: 0; }
+  .glove-palm { fill: rgba(210,214,218,0.04); stroke: rgba(245,248,250,0.3); stroke-width: 1.4; stroke-dasharray: 6 7; }
   .glove-label { fill: rgba(245,248,250,0.58); font-size: 12px; letter-spacing: 0.06em; text-anchor: middle; }
   .hand-silhouette { fill: rgba(210,214,218,0.13); stroke: rgba(235,238,242,0.2); stroke-width: 4; stroke-linejoin: round; }
   .hand-palm { fill: rgba(210,214,218,0.09); stroke: rgba(235,238,242,0.24); stroke-width: 1.4; }
@@ -133,7 +137,7 @@
     <div id="setup-panel">
       <div class="copy">
         <h2>Fit your hands inside the gloves</h2>
-        <p>Put each hand inside a dashed glove. The ghost layer should sit over your hands before you enter the garden.</p>
+        <p>Lay your hands flat inside the dashed gloves. When both gloves light up, tracking locks and the garden fades in.</p>
       </div>
       <button id="setup-done" type="button">enter garden</button>
     </div>
@@ -641,6 +645,9 @@
       let setupW = 0;
       let setupH = 0;
       let setupOpen = false;
+      let setupLocked = false;
+      let gloveTargets = [];
+      let gloveReadySince = 0;
       let wasPinching = false;
       let wasFist = false;
       let lastWatered = 0;
@@ -668,11 +675,10 @@
 
       function glovePath(cx, cy, scale, flip = 1) {
         const pts = [
-          [-46, 8], [-56, -28], [-42, -68], [-26, -106], [-10, -132],
-          [2, -112], [-2, -74], [4, -38], [12, -136], [28, -154],
-          [38, -120], [34, -40], [48, -132], [64, -140], [70, -104],
-          [58, -32], [82, -94], [98, -88], [96, -50], [70, -4],
-          [56, 30], [22, 48], [-18, 44],
+          [-142, -20], [-112, -58], [-58, -70], [-10, -62], [26, -48],
+          [54, -74], [86, -70], [92, -34], [80, -8], [128, -22],
+          [154, -6], [146, 26], [98, 36], [54, 46], [20, 70],
+          [-28, 74], [-88, 60], [-132, 28],
         ];
         return "M" + pts
           .map(([x, y]) => `${cx + x * scale * flip},${cy + y * scale}`)
@@ -680,54 +686,64 @@
       }
 
       function palmOval(cx, cy, scale, flip = 1) {
-        return `M${cx - 38 * scale * flip},${cy + 4 * scale}
-          C${cx - 44 * scale * flip},${cy - 34 * scale} ${cx - 14 * scale * flip},${cy - 70 * scale} ${cx + 24 * scale * flip},${cy - 66 * scale}
-          C${cx + 64 * scale * flip},${cy - 62 * scale} ${cx + 80 * scale * flip},${cy - 14 * scale} ${cx + 48 * scale * flip},${cy + 24 * scale}
-          C${cx + 24 * scale * flip},${cy + 52 * scale} ${cx - 22 * scale * flip},${cy + 46 * scale} ${cx - 38 * scale * flip},${cy + 4 * scale} Z`;
+        return `M${cx - 74 * scale * flip},${cy - 6 * scale}
+          C${cx - 50 * scale * flip},${cy - 42 * scale} ${cx + 34 * scale * flip},${cy - 46 * scale} ${cx + 70 * scale * flip},${cy - 12 * scale}
+          C${cx + 96 * scale * flip},${cy + 18 * scale} ${cx + 50 * scale * flip},${cy + 56 * scale} ${cx - 20 * scale * flip},${cy + 50 * scale}
+          C${cx - 82 * scale * flip},${cy + 44 * scale} ${cx - 106 * scale * flip},${cy + 20 * scale} ${cx - 74 * scale * flip},${cy - 6 * scale} Z`;
       }
 
       function drawSetupGloves() {
         if (!setupW || !setupH) return;
-        const scale = Math.max(0.72, Math.min(setupW, setupH) / 520);
-        const y = setupH * 0.58;
-        const gap = Math.min(setupW * 0.22, 220);
-        const gloves = [
-          { id: "left", cx: setupW * 0.5 - gap, cy: y, flip: -1, label: "LEFT" },
-          { id: "right", cx: setupW * 0.5 + gap, cy: y, flip: 1, label: "RIGHT" },
+        const scale = Math.max(1.05, Math.min(setupW / 760, setupH / 430));
+        const y = setupH * 0.54;
+        const gap = Math.min(setupW * 0.24, 300);
+        gloveTargets = [
+          { id: "left", cx: setupW * 0.5 - gap, cy: y, flip: -1, label: "LEFT", ready: false },
+          { id: "right", cx: setupW * 0.5 + gap, cy: y, flip: 1, label: "RIGHT", ready: false },
         ];
 
         setupGlovesLayer.selectAll("path.glove-outline")
-          .data(gloves, d => d.id)
+          .data(gloveTargets, d => d.id)
           .join("path")
-          .attr("class", "glove-outline")
+          .attr("class", d => `glove-outline${d.ready ? " ready" : ""}`)
           .attr("d", d => glovePath(d.cx, d.cy, scale, d.flip));
         setupGlovesLayer.selectAll("path.glove-palm")
-          .data(gloves, d => d.id)
+          .data(gloveTargets, d => d.id)
           .join("path")
           .attr("class", "glove-palm")
           .attr("d", d => palmOval(d.cx, d.cy, scale, d.flip));
         setupGlovesLayer.selectAll("text.glove-label")
-          .data(gloves, d => d.id)
+          .data(gloveTargets, d => d.id)
           .join("text")
           .attr("class", "glove-label")
           .attr("x", d => d.cx)
-          .attr("y", d => d.cy + 88 * scale)
+          .attr("y", d => d.cy + 112 * scale)
           .text(d => d.label);
       }
 
       function openSetup() {
         setupOpen = true;
+        setupLocked = false;
+        gloveReadySince = 0;
         setup.setAttribute("aria-hidden", "false");
+        setup.classList.remove("locked");
         setup.classList.add("active");
         document.body.classList.add("camera-setup-open");
+        document.body.classList.remove("camera-tracking-on");
         resizeSetup();
       }
 
       function closeSetup() {
+        if (setupLocked) return;
+        setupLocked = true;
         setupOpen = false;
-        setup.setAttribute("aria-hidden", "true");
-        setup.classList.remove("active");
+        setup.classList.add("locked");
         document.body.classList.remove("camera-setup-open");
+        document.body.classList.add("camera-tracking-on");
+        setTimeout(() => {
+          setup.setAttribute("aria-hidden", "true");
+          setup.classList.remove("active", "locked");
+        }, 900);
       }
 
       function pointInBox(landmark, width, height) {
@@ -772,6 +788,46 @@
           x: sum.x / palmIndexes.length,
           y: sum.y / palmIndexes.length,
         };
+      }
+
+      function handBounds(hand, pointFn = handPoint) {
+        const points = hand.map(pointFn);
+        const xs = points.map(p => p.x);
+        const ys = points.map(p => p.y);
+        return {
+          cx: (Math.min(...xs) + Math.max(...xs)) / 2,
+          cy: (Math.min(...ys) + Math.max(...ys)) / 2,
+          width: Math.max(...xs) - Math.min(...xs),
+          height: Math.max(...ys) - Math.min(...ys),
+        };
+      }
+
+      function handInsideGlove(hand, glove) {
+        const b = handBounds(hand, setupPoint);
+        const scaleX = Math.max(170, Math.min(setupW, setupH) * 0.23);
+        const scaleY = Math.max(120, Math.min(setupW, setupH) * 0.17);
+        const dx = (b.cx - glove.cx) / scaleX;
+        const dy = (b.cy - glove.cy) / scaleY;
+        const centered = (dx * dx + dy * dy) <= 1;
+        const usefulSize = b.width > scaleX * 0.45 && b.height > scaleY * 0.35;
+        return centered && usefulSize;
+      }
+
+      function updateGloveReadiness(hands) {
+        if (!setupOpen || setupLocked || gloveTargets.length < 2) return;
+        const ready = gloveTargets.map(glove => hands.some(hand => handInsideGlove(hand, glove)));
+        gloveTargets = gloveTargets.map((glove, i) => ({ ...glove, ready: ready[i] }));
+        setupGlovesLayer.selectAll("path.glove-outline")
+          .data(gloveTargets, d => d.id)
+          .attr("class", d => `glove-outline${d.ready ? " ready" : ""}`);
+
+        if (ready.every(Boolean)) {
+          if (!gloveReadySince) gloveReadySince = performance.now();
+          setStatus("Tracking locked.");
+          if (performance.now() - gloveReadySince > 650) closeSetup();
+        } else {
+          gloveReadySince = 0;
+        }
       }
 
       function drawHandOutlines(hands, layer = handLayer, pointFn = handPoint) {
@@ -1016,6 +1072,7 @@
           lastHandsAt = performance.now();
           drawHandOutlines(hands);
           if (setupOpen) drawHandOutlines(hands, setupHandsLayer, setupPoint);
+          updateGloveReadiness(hands);
           const index = hand[8];
           const palm = palmCenter(hand);
           const pose = handPose(hand);
