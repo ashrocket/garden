@@ -64,6 +64,36 @@
   <script src="https://d3js.org/d3.v7.min.js"></script>
   <script src="https://open.spotify.com/embed/iframe-api/v1" async></script>
   <script>
+    // ─── Haptic engine ─────────────────────────────────────────────────────────
+    const Haptic = {
+      _v: (p) => { try { navigator.vibrate?.(p); } catch (_) {} },
+      soft:    function() { this._v(5); },
+      medium:  function() { this._v(16); },
+      success: function() { this._v([10, 50, 15]); },
+    };
+
+    // ─── Motion / tilt engine ───────────────────────────────────────────────────
+    const Motion = (() => {
+      const cbs = [];
+      let _g = 0, _b = 0, _active = false;
+      const handle = (e) => { _g = e.gamma || 0; _b = e.beta || 0; cbs.forEach(f => f(_g, _b)); };
+      const start = async () => {
+        if (typeof DeviceOrientationEvent?.requestPermission === 'function') {
+          if (await DeviceOrientationEvent.requestPermission() !== 'granted') return false;
+        }
+        window.addEventListener('deviceorientation', handle, { passive: true });
+        _active = true;
+        return true;
+      };
+      return {
+        onTilt: (fn) => cbs.push(fn),
+        start,
+        get active() { return _active; },
+        needsPermission: () => typeof DeviceOrientationEvent?.requestPermission === 'function',
+        isMobile: () => 'ontouchstart' in window,
+      };
+    })();
+
     const TRACK_URI = "spotify:track:5FjmryC7WxCnaeutu1XpRg";
     const PREVIEW_LIMIT_MS = 30000;
 
@@ -88,6 +118,7 @@
     function hueFor(x) { return Math.floor((x / Math.max(W, 1)) * 320) + 20; }
 
     function plantAt(x, y) {
+      Haptic.soft();
       if (y > H - 20) y = H - 20;
       if (y < H * 0.35) y = H * 0.35 + (H * 0.4 * Math.random());
       planted.push({
@@ -103,6 +134,15 @@
     svg.on("click", (ev) => {
       const [x, y] = d3.pointer(ev);
       plantAt(x, y);
+    });
+
+    // Touch planting (D3 pointer works for click+touch on most browsers,
+    // but add an explicit touchend for iOS Safari compatibility)
+    svg.on("touchend.plant", (ev) => {
+      ev.preventDefault();
+      const touch = ev.changedTouches[0];
+      const rect = svg.node().getBoundingClientRect();
+      plantAt(touch.clientX - rect.left, touch.clientY - rect.top);
     });
 
     // Growth curve: 0 at plant time, 1 at song end. Shaped with easeCubicOut for early reward.
@@ -223,6 +263,26 @@
       }
       render();
     });
+
+    // ─── Tilt parallax ─────────────────────────────────────────────────────────
+    Motion.onTilt((gamma, beta) => {
+      const tx = gamma * 0.25;
+      flowersLayer.attr("transform", `translate(${tx}, 0)`);
+    });
+
+    // Init motion
+    if (Motion.isMobile()) {
+      if (Motion.needsPermission()) {
+        const btn = document.createElement('button');
+        btn.textContent = '↺ tilt';
+        btn.setAttribute('aria-label', 'Enable tilt controls');
+        btn.style.cssText = 'position:fixed;bottom:100px;right:16px;z-index:9999;background:rgba(0,0,0,0.8);color:rgba(245,169,127,0.9);border:1px solid rgba(245,169,127,0.3);border-radius:20px;padding:7px 14px;font-size:11px;font-family:monospace;letter-spacing:.05em;cursor:pointer;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);';
+        document.body.appendChild(btn);
+        btn.addEventListener('click', async () => { if (await Motion.start()) btn.remove(); });
+      } else {
+        Motion.start();
+      }
+    }
   </script>
 </body>
 </html>
