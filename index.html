@@ -43,7 +43,7 @@
   #camera-help li { margin: 3px 0; }
   #camera-setup { position: fixed; inset: 0; z-index: 20; background: #050505; opacity: 0; pointer-events: none; transition: opacity 0.18s ease; }
   #camera-setup.active { opacity: 1; pointer-events: auto; }
-  #setup-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; transform: scaleX(-1); opacity: 0.95; }
+  #setup-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); opacity: 0.95; }
   #setup-hands { position: absolute; inset: 0; width: 100%; height: 100%; }
   #setup-panel { position: absolute; left: 18px; right: 18px; bottom: 18px; display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; color: var(--ink); pointer-events: none; }
   #setup-panel .copy { max-width: 440px; padding: 12px 14px; background: rgba(0,0,0,0.46); border: 1px solid rgba(244,234,216,0.14); border-radius: 8px; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
@@ -641,6 +641,7 @@
       let lastPlanted = 0;
       let lastSunshine = 0;
       let lastHands = [];
+      let lastHandsAt = 0;
       let snapPrimed = false;
       let lastSnap = 0;
       const snapTimes = [];
@@ -690,7 +691,7 @@
         const height = setupH || window.innerHeight;
         const videoW = setupVideo.videoWidth || 4;
         const videoH = setupVideo.videoHeight || 3;
-        const scale = Math.min(width / videoW, height / videoH);
+        const scale = Math.max(width / videoW, height / videoH);
         const drawnW = videoW * scale;
         const drawnH = videoH * scale;
         const offsetX = (width - drawnW) / 2;
@@ -795,7 +796,7 @@
       }
 
       function hideHandOutline() {
-        if (lastHands.length) {
+        if (lastHands.length && performance.now() - lastHandsAt < 1600) {
           drawHandOutlines(lastHands);
           handLayer.classed("holding", true);
           if (setupOpen) {
@@ -937,6 +938,9 @@
           },
           runningMode: "VIDEO",
           numHands: 2,
+          minHandDetectionConfidence: 0.35,
+          minHandPresenceConfidence: 0.35,
+          minTrackingConfidence: 0.35,
         });
       }
 
@@ -952,6 +956,7 @@
 
         if (hand) {
           lastHands = hands;
+          lastHandsAt = performance.now();
           drawHandOutlines(hands);
           if (setupOpen) drawHandOutlines(hands, setupHandsLayer, setupPoint);
           const index = hand[8];
