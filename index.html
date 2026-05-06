@@ -82,9 +82,11 @@
   .hand-outline.visible, #setup-hands.visible { opacity: 0.42; }
   .hand-outline.holding, #setup-hands.holding { opacity: 0.2; }
   #setup-hands { opacity: 0; pointer-events: none; mix-blend-mode: screen; transition: opacity 0.16s linear; filter: blur(0.25px); }
-  .glove-outline { fill: rgba(210,214,218,0.08); stroke: rgba(245,248,250,0.54); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 12 9; }
-  .glove-outline.ready { fill: rgba(210,214,218,0.14); stroke: rgba(220,255,214,0.76); stroke-dasharray: 0; }
+  .glove-outline { fill: none; stroke: rgba(245,248,250,0.58); stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 12 9; }
+  .glove-outline.ready { stroke: rgba(220,255,214,0.82); stroke-dasharray: 0; }
   .glove-palm { fill: rgba(210,214,218,0.04); stroke: rgba(245,248,250,0.3); stroke-width: 1.4; stroke-dasharray: 6 7; }
+  .glove-finger { fill: none; stroke: rgba(245,248,250,0.44); stroke-width: 1.6; stroke-linecap: round; stroke-dasharray: 6 8; }
+  .glove-outline.ready ~ .glove-finger { stroke: rgba(220,255,214,0.52); }
   .glove-label { fill: rgba(245,248,250,0.58); font-size: 12px; letter-spacing: 0.06em; text-anchor: middle; }
   .hand-silhouette { fill: rgba(210,214,218,0.13); stroke: rgba(235,238,242,0.2); stroke-width: 4; stroke-linejoin: round; }
   .hand-palm { fill: rgba(210,214,218,0.09); stroke: rgba(235,238,242,0.24); stroke-width: 1.4; }
@@ -136,8 +138,8 @@
     <svg id="setup-hands" xmlns="http://www.w3.org/2000/svg"></svg>
     <div id="setup-panel">
       <div class="copy">
-        <h2>Fit your hands inside the gloves</h2>
-        <p>Lay your hands flat inside the dashed gloves. When both gloves light up, tracking locks and the garden fades in.</p>
+        <h2>Spread your fingers into the hand guides</h2>
+        <p>Lay both hands flat and spread your fingers along the lines. When both guides light up, tracking locks and the garden fades in.</p>
       </div>
       <button id="setup-done" type="button">enter garden</button>
     </div>
@@ -675,10 +677,10 @@
 
       function glovePath(cx, cy, scale, flip = 1) {
         const pts = [
-          [-142, -20], [-112, -58], [-58, -70], [-10, -62], [26, -48],
-          [54, -74], [86, -70], [92, -34], [80, -8], [128, -22],
-          [154, -6], [146, 26], [98, 36], [54, 46], [20, 70],
-          [-28, 74], [-88, 60], [-132, 28],
+          [-124, 26], [-142, -6], [-126, -38], [-92, -52], [-52, -48],
+          [-16, -36], [18, -48], [58, -52], [92, -38], [126, -18],
+          [144, 18], [126, 54], [82, 74], [28, 78], [-28, 74],
+          [-82, 58],
         ];
         return "M" + pts
           .map(([x, y]) => `${cx + x * scale * flip},${cy + y * scale}`)
@@ -690,6 +692,22 @@
           C${cx - 50 * scale * flip},${cy - 42 * scale} ${cx + 34 * scale * flip},${cy - 46 * scale} ${cx + 70 * scale * flip},${cy - 12 * scale}
           C${cx + 96 * scale * flip},${cy + 18 * scale} ${cx + 50 * scale * flip},${cy + 56 * scale} ${cx - 20 * scale * flip},${cy + 50 * scale}
           C${cx - 82 * scale * flip},${cy + 44 * scale} ${cx - 106 * scale * flip},${cy + 20 * scale} ${cx - 74 * scale * flip},${cy - 6 * scale} Z`;
+      }
+
+      function fingerGuides(cx, cy, scale, flip = 1) {
+        return [
+          [[-96, -24], [-154, -104]],
+          [[-46, -44], [-74, -154]],
+          [[2, -48], [0, -176]],
+          [[48, -42], [76, -154]],
+          [[90, -24], [156, -96]],
+        ].map(([[x1, y1], [x2, y2]], i) => ({
+          id: i,
+          x1: cx + x1 * scale * flip,
+          y1: cy + y1 * scale,
+          x2: cx + x2 * scale * flip,
+          y2: cy + y2 * scale,
+        }));
       }
 
       function drawSetupGloves() {
@@ -712,6 +730,19 @@
           .join("path")
           .attr("class", "glove-palm")
           .attr("d", d => palmOval(d.cx, d.cy, scale, d.flip));
+        setupGlovesLayer.selectAll("line.glove-finger")
+          .data(gloveTargets.flatMap(glove => fingerGuides(glove.cx, glove.cy, scale, glove.flip).map(finger => ({
+            ...finger,
+            id: `${glove.id}-${finger.id}`,
+            ready: glove.ready,
+          }))), d => d.id)
+          .join("line")
+          .attr("class", "glove-finger")
+          .attr("x1", d => d.x1)
+          .attr("y1", d => d.y1)
+          .attr("x2", d => d.x2)
+          .attr("y2", d => d.y2)
+          .attr("stroke", d => d.ready ? "rgba(220,255,214,0.52)" : null);
         setupGlovesLayer.selectAll("text.glove-label")
           .data(gloveTargets, d => d.id)
           .join("text")
@@ -820,6 +851,13 @@
         setupGlovesLayer.selectAll("path.glove-outline")
           .data(gloveTargets, d => d.id)
           .attr("class", d => `glove-outline${d.ready ? " ready" : ""}`);
+        setupGlovesLayer.selectAll("line.glove-finger")
+          .data(gloveTargets.flatMap(glove => fingerGuides(glove.cx, glove.cy, Math.max(1.05, Math.min(setupW / 760, setupH / 430)), glove.flip).map(finger => ({
+            ...finger,
+            id: `${glove.id}-${finger.id}`,
+            ready: glove.ready,
+          }))), d => d.id)
+          .attr("stroke", d => d.ready ? "rgba(220,255,214,0.52)" : null);
 
         if (ready.every(Boolean)) {
           if (!gloveReadySince) gloveReadySince = performance.now();
