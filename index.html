@@ -1143,13 +1143,11 @@
         return candidate;
       }
 
-      async function loadHandLandmarker() {
-        const vision = await import("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.18/vision_bundle.mjs");
-        const fileset = await vision.FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.18/wasm");
+      async function createHandLandmarker(vision, fileset, delegate) {
         return vision.HandLandmarker.createFromOptions(fileset, {
           baseOptions: {
             modelAssetPath: "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
-            delegate: "GPU",
+            delegate,
           },
           runningMode: "VIDEO",
           numHands: 2,
@@ -1157,6 +1155,17 @@
           minHandPresenceConfidence: 0.35,
           minTrackingConfidence: 0.35,
         });
+      }
+
+      async function loadHandLandmarker() {
+        const vision = await import("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.18/vision_bundle.mjs");
+        const fileset = await vision.FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.18/wasm");
+        try {
+          return await createHandLandmarker(vision, fileset, "GPU");
+        } catch (err) {
+          console.warn("GPU hand tracking failed, retrying on CPU.", err);
+          return createHandLandmarker(vision, fileset, "CPU");
+        }
       }
 
       function loop() {
@@ -1232,11 +1241,12 @@
         btn.disabled = true;
         btn.textContent = "loading camera";
         panel.hidden = false;
-        setStatus("Loading hand tracking.");
 
         try {
-          landmarker = landmarker || await loadHandLandmarker();
+          setStatus("Opening Mac camera.");
           stream = await chooseCameraStream();
+          setStatus(`Camera ready${cameraLabel(stream) ? `: ${cameraLabel(stream)}` : ""}. Loading hand tracking.`);
+          landmarker = landmarker || await loadHandLandmarker();
           video.srcObject = stream;
           setupVideo.srcObject = stream;
           await video.play();
@@ -1247,9 +1257,20 @@
           raf = requestAnimationFrame(loop);
         } catch (err) {
           console.error(err);
+          stopStream(stream);
+          stream = null;
           btn.disabled = false;
           btn.textContent = "camera garden";
-          setStatus(blockedCameraPattern.test(err.message) ? "iPhone camera blocked. Pick the MacBook camera in browser settings." : "Camera permission or hand tracking failed.");
+          const message = err?.message || "";
+          if (blockedCameraPattern.test(message)) {
+            setStatus("iPhone camera blocked. Pick the MacBook camera in browser settings.");
+          } else if (/permission|denied|notallowed/i.test(message)) {
+            setStatus("Camera permission denied. Allow camera access and pick the MacBook camera.");
+          } else if (/device|camera|video|constraint|notfound|notreadable/i.test(message)) {
+            setStatus(`Camera failed: ${message}`);
+          } else {
+            setStatus(`Hand tracking failed: ${message || "MediaPipe did not load."}`);
+          }
         }
       }
 
