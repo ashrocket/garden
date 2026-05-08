@@ -825,6 +825,7 @@
 
     // ─── Camera pinch watering ─────────────────────────────────────────────────
     const CameraPinch = (() => {
+      const IS_MOBILE = Motion.isMobile();
       const btn = document.getElementById("camera-toggle");
       const panel = document.getElementById("camera-panel");
       const status = document.getElementById("camera-status");
@@ -856,6 +857,11 @@
       let lastSnap = 0;
       const snapTimes = [];
       const waveHistory = [];
+      // Mobile-specific setup state
+      let flatPromptShown = false;
+      let skipSetup = false;
+      let mobileHandSince = 0;
+      let captureCelebrating = false;
 
       function setStatus(text) {
         status.textContent = text;
@@ -1180,7 +1186,10 @@
       }
 
       function hideHandOutline() {
-        if (lastHands.length && performance.now() - lastHandsAt < 1600) {
+        // Keep ghost for a short window so micro-dropouts don't flicker.
+        // 400ms is enough for a genuine re-detection; 1600ms caused "3 hands" visuals.
+        const ghostMs = setupOpen ? 400 : 120;
+        if (lastHands.length && performance.now() - lastHandsAt < ghostMs) {
           drawHandOutlines(lastHands);
           handLayer.classed("holding", true);
           if (setupOpen) {
@@ -1378,9 +1387,9 @@
           },
           runningMode: "VIDEO",
           numHands: 2,
-          minHandDetectionConfidence: 0.35,
-          minHandPresenceConfidence: 0.35,
-          minTrackingConfidence: 0.35,
+          minHandDetectionConfidence: 0.58,
+          minHandPresenceConfidence: 0.58,
+          minTrackingConfidence: 0.48,
         });
       }
 
