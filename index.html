@@ -78,6 +78,7 @@
   .sun-ray { fill: none; stroke: rgba(255,218,120,0.72); stroke-width: 1.4; stroke-linecap: round; opacity: 0.7; }
   .sun-glow { fill: rgba(255,207,93,0.1); stroke: rgba(255,224,137,0.42); stroke-width: 1; }
   .cloud-puff { fill: rgba(244,234,216,0.09); stroke: rgba(244,234,216,0.16); stroke-width: 1; }
+  #hand-flash { position: fixed; inset: 0; z-index: 25; background: rgba(248,236,196,0.52); opacity: 0; pointer-events: none; transition: opacity 0.06s ease; }
   .hand-outline { opacity: 0; pointer-events: none; mix-blend-mode: screen; transition: opacity 0.16s linear; filter: blur(0.2px); }
   .hand-outline.visible, #setup-hands.visible { opacity: 0.42; }
   .hand-outline.holding, #setup-hands.holding { opacity: 0.2; }
@@ -93,6 +94,37 @@
   .hand-bone { fill: none; stroke: rgba(235,238,242,0.38); stroke-width: 5.2; stroke-linecap: round; stroke-linejoin: round; }
   .hand-bone.detail { stroke: rgba(250,252,253,0.22); stroke-width: 1.4; }
   .hand-point { fill: rgba(245,248,250,0.2); }
+
+  /* ── Simulation mode badge ─────────────────────────────────────── */
+  #sim-badge { position: fixed; top: 10px; left: 50%; transform: translateX(-50%); z-index: 50; padding: 3px 12px; background: rgba(72,199,116,0.12); border: 1px solid rgba(72,199,116,0.4); border-radius: 12px; color: rgba(72,199,116,0.9); font-size: 10px; letter-spacing: 0.08em; pointer-events: none; }
+  #sim-badge[hidden] { display: none; }
+
+  /* ── Flat phone prompt (mobile pre-camera) ─────────────────────── */
+  #flat-prompt { position: fixed; inset: 0; z-index: 30; background: #050505; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 18px; padding: 40px 32px; text-align: center; }
+  #flat-prompt[hidden] { display: none; }
+  #flat-prompt .fp-icon { font-size: 52px; line-height: 1; }
+  #flat-prompt h2 { margin: 0; font-size: 21px; font-weight: 500; color: var(--ink); }
+  #flat-prompt p { margin: 0; color: var(--dim); font-size: 14px; line-height: 1.6; max-width: 280px; }
+  .fp-actions { display: flex; flex-direction: column; gap: 10px; align-items: center; margin-top: 6px; }
+  .fp-go { min-height: 48px; min-width: 220px; border: 1px solid var(--accent); border-radius: 24px; background: rgba(245,169,127,0.1); color: var(--accent); font: inherit; font-size: 15px; cursor: pointer; }
+  .fp-skip { color: var(--dim); font-size: 12px; background: none; border: none; cursor: pointer; padding: 8px; }
+
+  /* ── Mobile capture target zone ────────────────────────────────── */
+  #mobile-target { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -52%); width: clamp(160px, 42vmin, 220px); height: clamp(160px, 42vmin, 220px); border: 2px dashed rgba(245,169,127,0.35); border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: border-color 0.2s, box-shadow 0.2s, background 0.2s; pointer-events: none; }
+  #mobile-target[hidden] { display: none; }
+  #mobile-target.ready { border-color: rgba(72,199,116,0.9); border-style: solid; background: rgba(72,199,116,0.06); box-shadow: 0 0 32px rgba(72,199,116,0.15); }
+  .mt-hint { color: rgba(244,234,216,0.45); font-size: 13px; text-align: center; line-height: 1.4; max-width: 130px; }
+
+  /* ── Gesture guide (shown after mobile capture) ─────────────────── */
+  #gesture-guide { position: absolute; inset: 0; background: rgba(5,5,5,0.9); display: none; flex-direction: column; align-items: center; justify-content: center; gap: 22px; padding: 32px 28px; }
+  #gesture-guide.show { display: flex; }
+  #gesture-guide h3 { margin: 0; font-size: 17px; font-weight: 500; color: var(--ink); }
+  .gg-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 20px; width: 100%; max-width: 320px; }
+  .gg-cell { display: flex; align-items: center; gap: 12px; }
+  .gg-icon { font-size: 26px; min-width: 36px; text-align: center; }
+  .gg-label { font-size: 13px; color: var(--ink); }
+  .gg-desc { font-size: 11px; color: var(--dim); }
+  #gg-enter { min-height: 44px; min-width: 180px; border: 1px solid var(--accent); border-radius: 22px; background: rgba(245,169,127,0.1); color: var(--accent); font: inherit; font-size: 15px; cursor: pointer; margin-top: 4px; }
 </style>
 </head>
 <body>
@@ -123,7 +155,9 @@
       <video id="hand-video" autoplay muted playsinline></video>
       <div id="camera-status">Two-hand tap plants. Pinch waters. Snap grows technicolor houses.</div>
       <ul id="camera-help">
-        <li>Tap one hand with your other index finger to plant.</li>
+        <li>Phone on a stand? Both hands free — spread and tap.</li>
+        <li>Holding your phone? Plant with a fist.</li>
+        <li>Tap one palm with your other index finger to plant.</li>
         <li>Pinch over a flower to pour water.</li>
         <li>Snap to grow technicolor houses.</li>
         <li>Wave an open hand side to side for sunshine.</li>
@@ -131,15 +165,43 @@
     </div>
   </div>
   <div id="pinch-cursor" aria-hidden="true"></div>
+  <div id="hand-flash" aria-hidden="true"></div>
+  <div id="sim-badge" hidden>SIM MODE</div>
+
+  <!-- Flat phone instruction (mobile, shown before camera starts) -->
+  <div id="flat-prompt" hidden>
+    <div class="fp-icon">📱</div>
+    <h2>Lay your phone flat</h2>
+    <p>Place it face-up on a surface. Hold your hand above it to grow flowers.</p>
+    <div class="fp-actions">
+      <button class="fp-go" id="flat-go">Got it — show my hand</button>
+      <button class="fp-skip" id="flat-skip">Skip to garden</button>
+    </div>
+  </div>
 
   <div id="camera-setup" aria-hidden="true">
     <video id="setup-video" autoplay muted playsinline></video>
     <svg id="setup-gloves" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"></svg>
     <svg id="setup-hands" xmlns="http://www.w3.org/2000/svg"></svg>
+    <!-- Mobile: circular target zone (replaces glove guides) -->
+    <div id="mobile-target" hidden>
+      <div class="mt-hint">hold your hand here</div>
+    </div>
+    <!-- Gesture guide shown after mobile capture -->
+    <div id="gesture-guide">
+      <h3>Hand captured!</h3>
+      <div class="gg-grid">
+        <div class="gg-cell"><span class="gg-icon">✊</span><div><div class="gg-label">Fist</div><div class="gg-desc">Plant flowers</div></div></div>
+        <div class="gg-cell"><span class="gg-icon">🤏</span><div><div class="gg-label">Pinch</div><div class="gg-desc">Water a flower</div></div></div>
+        <div class="gg-cell"><span class="gg-icon">👋</span><div><div class="gg-label">Wave</div><div class="gg-desc">Bring sunshine</div></div></div>
+        <div class="gg-cell"><span class="gg-icon">🖐️</span><div><div class="gg-label">Snap</div><div class="gg-desc">Grow a house</div></div></div>
+      </div>
+      <button id="gg-enter">Enter the garden</button>
+    </div>
     <div id="setup-panel">
       <div class="copy">
-        <h2>Spread your fingers into the hand guides</h2>
-        <p>Lay both hands flat and spread your fingers along the lines. When both guides light up, tracking locks and the garden fades in.</p>
+        <h2>Set your phone on a stand, then spread both hands</h2>
+        <p>Holding your phone? Just use a fist to plant — tap <strong style="color:var(--ink)">enter garden</strong> to skip setup. For two hands, prop your phone up and spread your fingers into the guides.</p>
       </div>
       <button id="setup-done" type="button">enter garden</button>
     </div>
@@ -629,6 +691,138 @@
       render();
     });
 
+    // ─── Simulation mode ───────────────────────────────────────────────────────
+    const SIM_MODE = new URLSearchParams(location.search).has('sim');
+
+    // Synthetic MediaPipe-shaped hand landmarks for sim mode.
+    // Cycles: none → open → wave → fist → pinch → snap → two-hand → repeat
+    const SimCamera = (() => {
+      const PHASES = [
+        { name: 'none',  dur: 2000 },
+        { name: 'open',  dur: 2200 },
+        { name: 'wave',  dur: 2600 },
+        { name: 'fist',  dur: 2000 },
+        { name: 'pinch', dur: 2000 },
+        { name: 'snap',  dur: 2200 },
+        { name: 'two',   dur: 3000 },
+      ];
+      let phaseIdx = 0, phaseStart = 0;
+
+      // Build 21 landmarks for a spread-open hand at normalized (cx, cy).
+      // s = scale (hand height in normalized units).
+      function makeHand(cx, cy, s) {
+        return [
+          [cx,          cy + s*0.55],  // 0  wrist
+          [cx - s*0.28, cy + s*0.20],  // 1  thumb_cmc
+          [cx - s*0.52, cy + s*0.08],  // 2  thumb_mcp
+          [cx - s*0.66, cy - s*0.06],  // 3  thumb_ip
+          [cx - s*0.76, cy - s*0.18],  // 4  thumb_tip
+          [cx - s*0.18, cy + s*0.02],  // 5  index_mcp
+          [cx - s*0.19, cy - s*0.28],  // 6  index_pip
+          [cx - s*0.19, cy - s*0.50],  // 7  index_dip
+          [cx - s*0.19, cy - s*0.68],  // 8  index_tip
+          [cx,          cy - s*0.02],  // 9  middle_mcp
+          [cx,          cy - s*0.32],  // 10 middle_pip
+          [cx,          cy - s*0.54],  // 11 middle_dip
+          [cx,          cy - s*0.72],  // 12 middle_tip
+          [cx + s*0.18, cy + s*0.01],  // 13 ring_mcp
+          [cx + s*0.19, cy - s*0.28],  // 14 ring_pip
+          [cx + s*0.19, cy - s*0.48],  // 15 ring_dip
+          [cx + s*0.19, cy - s*0.64],  // 16 ring_tip
+          [cx + s*0.34, cy + s*0.08],  // 17 pinky_mcp
+          [cx + s*0.38, cy - s*0.10],  // 18 pinky_pip
+          [cx + s*0.39, cy - s*0.24],  // 19 pinky_dip
+          [cx + s*0.40, cy - s*0.36],  // 20 pinky_tip
+        ].map(([x, y]) => ({ x, y, z: 0 }));
+      }
+
+      // Fist: all finger tips curled below their pips.
+      function makeFist(cx, cy, s) {
+        return [
+          [cx,          cy + s*0.45],  // 0  wrist
+          [cx - s*0.25, cy + s*0.12],  // 1  thumb_cmc
+          [cx - s*0.38, cy + s*0.02],  // 2  thumb_mcp
+          [cx - s*0.32, cy + s*0.08],  // 3  thumb_ip
+          [cx - s*0.24, cy + s*0.15],  // 4  thumb_tip (rests on fingers)
+          [cx - s*0.14, cy + s*0.02],  // 5  index_mcp
+          [cx - s*0.12, cy + s*0.08],  // 6  index_pip
+          [cx - s*0.09, cy + s*0.18],  // 7  index_dip
+          [cx - s*0.06, cy + s*0.28],  // 8  index_tip (below pip ✓)
+          [cx,          cy + s*0.00],  // 9  middle_mcp
+          [cx,          cy + s*0.08],  // 10 middle_pip
+          [cx,          cy + s*0.18],  // 11 middle_dip
+          [cx,          cy + s*0.28],  // 12 middle_tip
+          [cx + s*0.14, cy + s*0.02],  // 13 ring_mcp
+          [cx + s*0.13, cy + s*0.09],  // 14 ring_pip
+          [cx + s*0.12, cy + s*0.18],  // 15 ring_dip
+          [cx + s*0.11, cy + s*0.27],  // 16 ring_tip
+          [cx + s*0.26, cy + s*0.06],  // 17 pinky_mcp
+          [cx + s*0.27, cy + s*0.12],  // 18 pinky_pip
+          [cx + s*0.27, cy + s*0.20],  // 19 pinky_dip
+          [cx + s*0.27, cy + s*0.27],  // 20 pinky_tip
+        ].map(([x, y]) => ({ x, y, z: 0 }));
+      }
+
+      function getHands() {
+        const now = performance.now();
+        if (!phaseStart) phaseStart = now;
+        const elapsed = now - phaseStart;
+        if (elapsed > PHASES[phaseIdx].dur) {
+          phaseIdx = (phaseIdx + 1) % PHASES.length;
+          phaseStart = now;
+        }
+        const t = (now - phaseStart) / PHASES[phaseIdx].dur;
+        const { name } = PHASES[phaseIdx];
+
+        if (name === 'none') return [];
+
+        const cx = 0.5, cy = 0.5, s = 0.28;
+
+        if (name === 'open') return [makeHand(cx, cy, s)];
+
+        if (name === 'wave') {
+          // ~3 oscillations across 2.6s → wave detector sees travel + direction changes
+          return [makeHand(cx + 0.22 * Math.sin(t * Math.PI * 4), cy, s)];
+        }
+
+        if (name === 'fist') return [makeFist(cx, cy, s * 0.8)];
+
+        if (name === 'pinch') {
+          // Thumb tip very close to index tip → pinchDist < 0.48
+          const h = makeHand(cx, cy, s);
+          h[4] = { x: h[8].x + 0.008, y: h[8].y + 0.008, z: 0 };
+          h[3] = { x: (h[2].x + h[4].x) / 2, y: (h[2].y + h[4].y) / 2, z: 0 };
+          return [h];
+        }
+
+        if (name === 'snap') {
+          // t < 0.4: thumb near middle tip (primed), then snaps away
+          const h = makeHand(cx, cy, s);
+          if (t < 0.4) {
+            // snapDist = dist(4,12) / scale(0,9) < 0.38
+            h[4] = { x: h[12].x + 0.005, y: h[12].y + 0.005, z: 0 };
+            h[3] = { x: (h[2].x + h[4].x) / 2, y: (h[2].y + h[4].y) / 2, z: 0 };
+          }
+          // t >= 0.4: default thumb position is far from middle → snapDist > 0.68
+          return [h];
+        }
+
+        if (name === 'two') {
+          // h1 index tip oscillates toward h2 palm to trigger twoHandPlantTap
+          const h1 = makeHand(0.32, cy, s * 0.75);
+          const h2 = makeHand(0.68, cy, s * 0.75);
+          const tapT = Math.max(0, Math.sin(t * Math.PI * 2.2));
+          // Move h1[8] toward h2 palm (normalized x≈0.68, y≈cy)
+          h1[8] = { x: 0.32 + (0.68 - 0.32) * tapT * 0.96, y: cy - 0.01, z: 0 };
+          return [h1, h2];
+        }
+
+        return [];
+      }
+
+      return { getHands };
+    })();
+
     // ─── Camera pinch watering ─────────────────────────────────────────────────
     const CameraPinch = (() => {
       const btn = document.getElementById("camera-toggle");
@@ -652,6 +846,7 @@
       let gloveReadySince = 0;
       let wasPinching = false;
       let wasFist = false;
+      let wasHandPresent = false;
       let lastWatered = 0;
       let lastPlanted = 0;
       let lastSunshine = 0;
@@ -664,6 +859,32 @@
 
       function setStatus(text) {
         status.textContent = text;
+      }
+
+      function playDing() {
+        try {
+          const ctx = new (window.AudioContext || window.webkitAudioContext)();
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(880, ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(1100, ctx.currentTime + 0.08);
+          gain.gain.setValueAtTime(0, ctx.currentTime);
+          gain.gain.linearRampToValueAtTime(0.22, ctx.currentTime + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+          osc.start(ctx.currentTime);
+          osc.stop(ctx.currentTime + 0.55);
+          osc.onended = () => ctx.close();
+        } catch (_) {}
+      }
+
+      function handFlash() {
+        const el = document.getElementById("hand-flash");
+        el.style.opacity = "1";
+        setTimeout(() => { el.style.transition = "opacity 0.45s ease"; el.style.opacity = "0"; }, 80);
+        setTimeout(() => { el.style.transition = "opacity 0.06s ease"; }, 600);
       }
 
       function resizeSetup() {
@@ -852,6 +1073,12 @@
 
       function updateGloveReadiness(hands) {
         if (!setupOpen || setupLocked || gloveTargets.length < 2) return;
+        // Sim mode: auto-close setup after a brief delay
+        if (SIM_MODE) {
+          if (!gloveReadySince) gloveReadySince = performance.now();
+          if (performance.now() - gloveReadySince > 900) closeSetup();
+          return;
+        }
         const ready = gloveTargets.map(glove => hands.some(hand => handInsideGlove(hand, glove)));
         gloveTargets = gloveTargets.map((glove, i) => ({ ...glove, ready: ready[i] }));
         setupGlovesLayer.selectAll("path.glove-outline")
@@ -1169,16 +1396,23 @@
       }
 
       function loop() {
-        if (!landmarker || video.readyState < 2) {
+        try {
+        const activeVideo = setupOpen ? setupVideo : video;
+        if (!SIM_MODE && (!landmarker || activeVideo.readyState < 2)) {
           raf = requestAnimationFrame(loop);
           return;
         }
+        // (SIM_MODE skips the above guard entirely)
 
-        const result = landmarker.detectForVideo(video, performance.now());
+        const result = SIM_MODE
+          ? { landmarks: SimCamera.getHands() }
+          : landmarker.detectForVideo(activeVideo, performance.now());
         const hands = result.landmarks || [];
         const hand = hands[0];
 
         if (hand) {
+          if (!wasHandPresent) { playDing(); handFlash(); }
+          wasHandPresent = true;
           lastHands = hands;
           lastHandsAt = performance.now();
           drawHandOutlines(hands);
@@ -1221,6 +1455,7 @@
         } else {
           cursor.style.opacity = "0";
           hideHandOutline();
+          wasHandPresent = false;
           wasPinching = false;
           wasFist = false;
           snapPrimed = false;
@@ -1228,10 +1463,22 @@
           setStatus("Show one hand to the camera.");
         }
 
-        raf = requestAnimationFrame(loop);
+        // rAF is throttled to 0fps in background tabs; use setTimeout in sim mode
+        raf = SIM_MODE ? setTimeout(loop, 16) : requestAnimationFrame(loop);
+        } catch(e) { console.error('loop crash:', e); raf = SIM_MODE ? setTimeout(loop, 16) : requestAnimationFrame(loop); }
       }
 
       async function start() {
+        if (SIM_MODE) {
+          panel.hidden = false;
+          btn.textContent = "camera on (sim)";
+          setStatus("Simulation — fake hands cycle: open → wave → fist → pinch → snap → two-hand");
+          document.getElementById('sim-badge').removeAttribute('hidden');
+          openSetup();
+          raf = requestAnimationFrame(loop);
+          return;
+        }
+
         if (!navigator.mediaDevices?.getUserMedia) {
           setStatus("Camera needs a modern browser on localhost or HTTPS.");
           panel.hidden = false;
@@ -1278,7 +1525,7 @@
       setupDone.addEventListener("click", closeSetup);
       window.addEventListener("resize", resizeSetup);
       window.addEventListener("pagehide", () => {
-        cancelAnimationFrame(raf);
+        SIM_MODE ? clearTimeout(raf) : cancelAnimationFrame(raf);
         stream?.getTracks().forEach(track => track.stop());
       });
     })();
