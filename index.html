@@ -984,16 +984,81 @@
           .text(d => d.label);
       }
 
+      function showGestureGuide() {
+        const gg = document.getElementById('gesture-guide');
+        gg.classList.add('show');
+        // Auto-enter garden after 4s; button also triggers closeSetup
+        setTimeout(() => { if (!setupLocked) closeSetup(); }, 4000);
+      }
+
+      function updateMobileCapture(hands) {
+        if (!setupOpen || setupLocked || captureCelebrating) return;
+        const targetEl = document.getElementById('mobile-target');
+        const hand = hands[0];
+
+        if (!hand) {
+          mobileHandSince = 0;
+          targetEl.classList.remove('ready');
+          setStatus("Hold your hand above the phone.");
+          return;
+        }
+
+        // Use screen-space bounds — handPoint maps 0-1 → screen pixels
+        const b = handBounds(hand);
+        const inX = b.cx > W * 0.18 && b.cx < W * 0.82;
+        const inY = b.cy > H * 0.12 && b.cy < H * 0.88;
+        const hasSize = b.width > W * 0.1;
+
+        if (inX && inY && hasSize) {
+          targetEl.classList.add('ready');
+          if (!mobileHandSince) mobileHandSince = performance.now();
+          setStatus("Hold steady…");
+          if (performance.now() - mobileHandSince > 600) {
+            captureCelebrating = true;
+            handFlash();
+            playDing();
+            targetEl.classList.remove('ready');
+            targetEl.setAttribute('hidden', '');
+            showGestureGuide();
+            setStatus("Hand captured — you're in the garden.");
+          }
+        } else {
+          mobileHandSince = 0;
+          targetEl.classList.remove('ready');
+          setStatus("Move your hand to the center of the screen.");
+        }
+      }
+
       function openSetup() {
+        if (skipSetup) {
+          // User tapped "skip" on flat-prompt — go straight to garden
+          document.body.classList.remove("camera-setup-open");
+          document.body.classList.add("camera-tracking-on");
+          return;
+        }
         setupOpen = true;
         setupLocked = false;
         gloveReadySince = 0;
+        mobileHandSince = 0;
+        captureCelebrating = false;
         setup.setAttribute("aria-hidden", "false");
         setup.classList.remove("locked");
         setup.classList.add("active");
         document.body.classList.add("camera-setup-open");
         document.body.classList.remove("camera-tracking-on");
         resizeSetup();
+
+        if (IS_MOBILE) {
+          // Hide desktop glove guides; show mobile target zone
+          setupGlovesLayer.style("display", "none");
+          document.getElementById('mobile-target').removeAttribute('hidden');
+          // Rewrite setup panel copy for phone-flat context
+          const h2 = setup.querySelector('#setup-panel h2');
+          const p = setup.querySelector('#setup-panel p');
+          if (h2) h2.textContent = 'Hold your hand above the phone';
+          if (p) p.textContent = 'Keep it over the glowing circle for a moment to unlock the garden.';
+          setStatus("Hold your hand above the phone.");
+        }
       }
 
       function closeSetup() {
@@ -1426,7 +1491,11 @@
           lastHandsAt = performance.now();
           drawHandOutlines(hands);
           if (setupOpen) drawHandOutlines(hands, setupHandsLayer, setupPoint);
-          updateGloveReadiness(hands);
+          if (IS_MOBILE && setupOpen) {
+            updateMobileCapture(hands);
+          } else {
+            updateGloveReadiness(hands);
+          }
           const index = hand[8];
           const palm = palmCenter(hand);
           const pose = handPose(hand);
@@ -1530,9 +1599,32 @@
         }
       }
 
-      btn.addEventListener("click", start);
+      btn.addEventListener("click", () => {
+        if (IS_MOBILE && !flatPromptShown) {
+          document.getElementById('flat-prompt').removeAttribute('hidden');
+          return;
+        }
+        start();
+      });
       setupDone.addEventListener("click", closeSetup);
       window.addEventListener("resize", resizeSetup);
+
+      // Flat-prompt buttons
+      document.getElementById('flat-go').addEventListener('click', () => {
+        flatPromptShown = true;
+        document.getElementById('flat-prompt').setAttribute('hidden', '');
+        start();
+      });
+      document.getElementById('flat-skip').addEventListener('click', () => {
+        flatPromptShown = true;
+        skipSetup = true;
+        document.getElementById('flat-prompt').setAttribute('hidden', '');
+        start();
+      });
+      // Gesture guide "Enter garden" button
+      document.getElementById('gg-enter').addEventListener('click', () => {
+        closeSetup();
+      });
       window.addEventListener("pagehide", () => {
         SIM_MODE ? clearTimeout(raf) : cancelAnimationFrame(raf);
         stream?.getTracks().forEach(track => track.stop());
